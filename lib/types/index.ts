@@ -28,11 +28,12 @@ export type DepartmentUpdate = Database['public']['Tables']['departments']['Upda
 
 export type RoleName = 'ADMIN' | 'FINANCE' | 'HOD' | 'POC'
 
+// Single role per user (one-to-one relationship)
 export interface UserWithRoles extends User {
-  user_roles?: Array<{
+  user_roles?: {
     role_id: string
     roles: Pick<Role, 'name' | 'id'>
-  }>
+  } | null
 }
 
 // ============================================================================

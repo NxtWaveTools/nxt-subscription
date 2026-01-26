@@ -1,6 +1,6 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
-import { AUTH_ERRORS, ROUTES } from '@/lib/constants'
+import { AUTH_ERRORS, ROUTES, ADMIN_ROUTES } from '@/lib/constants'
 import { isUserActive } from '@/lib/auth/user'
 
 export async function GET(request: Request) {
@@ -31,8 +31,11 @@ export async function GET(request: Request) {
     return NextResponse.redirect(`${origin}${ROUTES.LOGIN}?error=${AUTH_ERRORS.USER_NOT_FOUND}`)
   }
 
+  // Use admin client to bypass RLS for checking user status during login
+  const adminClient = createAdminClient()
+
   // Check if user exists and is active in our database
-  const { data: userData, error: userError } = await supabase
+  const { data: userData, error: userError } = await adminClient
     .from('users')
     .select('is_active')
     .eq('id', user.id)
@@ -49,5 +52,22 @@ export async function GET(request: Request) {
     return NextResponse.redirect(`${origin}${ROUTES.LOGIN}?error=${AUTH_ERRORS.ACCOUNT_INACTIVE}`)
   }
 
-  return NextResponse.redirect(`${origin}${ROUTES.DASHBOARD}`)
+  // Check user role and redirect accordingly
+  const { data: roleData } = await adminClient
+    .from('user_roles')
+    .select(`
+      roles (
+        name
+      )
+    `)
+    .eq('user_id', user.id)
+    .single()
+
+  // Redirect admins and finance users to admin panel
+  if (roleData?.roles?.name === 'ADMIN' || roleData?.roles?.name === 'FINANCE') {
+    return NextResponse.redirect(`${origin}${ADMIN_ROUTES.ADMIN}`)
+  }
+
+  // All other users go to admin dashboard (they'll be redirected if not authorized)
+  return NextResponse.redirect(`${origin}${ADMIN_ROUTES.ADMIN}`)
 }

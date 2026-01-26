@@ -33,7 +33,18 @@ export async function getCurrentUser(): Promise<UserWithRoles | null> {
     .eq('id', authUser.id)
     .single()
 
-  return userProfile
+  if (!userProfile) return null
+
+  // Normalize user_roles: Supabase returns array even for one-to-one
+  // Convert array to single object or null
+  const normalizedProfile: UserWithRoles = {
+    ...userProfile,
+    user_roles: Array.isArray(userProfile.user_roles) 
+      ? userProfile.user_roles[0] || null 
+      : userProfile.user_roles,
+  }
+
+  return normalizedProfile
 }
 
 /**
@@ -42,7 +53,8 @@ export async function getCurrentUser(): Promise<UserWithRoles | null> {
 export function hasRole(user: UserWithRoles | null, roleName: RoleName): boolean {
   if (!user?.user_roles) return false
   
-  return user.user_roles.some((ur) => ur.roles.name === roleName)
+  // Handle both object and null
+  return user.user_roles.roles?.name === roleName
 }
 
 /**
@@ -51,18 +63,16 @@ export function hasRole(user: UserWithRoles | null, roleName: RoleName): boolean
 export function hasAnyRole(user: UserWithRoles | null, roleNames: RoleName[]): boolean {
   if (!user?.user_roles) return false
   
-  return user.user_roles.some((ur) => 
-    roleNames.includes(ur.roles.name as RoleName)
-  )
+  // Handle both object and null
+  return roleNames.includes(user.user_roles.roles?.name as RoleName)
 }
 
 /**
- * Get user's role names
+ * Get user's role name (single role per user)
  */
-export function getUserRoles(user: UserWithRoles | null): RoleName[] {
-  if (!user?.user_roles) return []
-  
-  return user.user_roles.map((ur) => ur.roles.name as RoleName)
+export function getUserRole(user: UserWithRoles | null): RoleName | null {
+  if (!user?.user_roles?.roles) return null
+  return user.user_roles.roles.name as RoleName
 }
 
 /**
@@ -70,4 +80,25 @@ export function getUserRoles(user: UserWithRoles | null): RoleName[] {
  */
 export function isUserActive(user: { is_active: boolean } | User | UserWithRoles | null): boolean {
   return user?.is_active ?? false
+}
+
+/**
+ * Require admin or finance role (throws if unauthorized)
+ */
+export async function requireAdmin(): Promise<UserWithRoles> {
+  const user = await getCurrentUser()
+  
+  if (!user) {
+    throw new Error('Unauthorized: No user found')
+  }
+  
+  if (!isUserActive(user)) {
+    throw new Error('Unauthorized: User account is inactive')
+  }
+  
+  if (!hasAnyRole(user, ['ADMIN', 'FINANCE'])) {
+    throw new Error('Forbidden: Admin or Finance role required')
+  }
+  
+  return user
 }

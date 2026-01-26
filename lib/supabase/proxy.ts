@@ -6,6 +6,7 @@ import { NextResponse, type NextRequest } from 'next/server'
  * This ensures auth state is available throughout your app
  */
 export async function updateSession(request: NextRequest) {
+  const isProduction = process.env.NODE_ENV === 'production'
   let supabaseResponse = NextResponse.next({
     request,
   })
@@ -27,6 +28,10 @@ export async function updateSession(request: NextRequest) {
             supabaseResponse.cookies.set(name, value, options)
           )
         },
+      },
+      // Allow non-secure cookies locally so the session survives http://localhost
+      cookieOptions: {
+        secure: isProduction,
       },
     }
   )

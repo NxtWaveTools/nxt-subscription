@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { hasRole, hasAnyRole, getUserRoles, isUserActive } from './user'
+import { hasRole, hasAnyRole, getUserRole, isUserActive } from './user'
 import type { UserWithRoles } from '@/lib/types'
 
 describe('Auth Helper Functions', () => {
@@ -12,12 +12,10 @@ describe('Auth Helper Functions', () => {
         is_active: true,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-        user_roles: [
-          {
-            role_id: '1',
-            roles: { id: '1', name: 'ADMIN' },
-          },
-        ],
+        user_roles: {
+          role_id: '1',
+          roles: { id: '1', name: 'ADMIN' },
+        },
       }
 
       expect(hasRole(user, 'ADMIN')).toBe(true)
@@ -31,12 +29,10 @@ describe('Auth Helper Functions', () => {
         is_active: true,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-        user_roles: [
-          {
-            role_id: '2',
-            roles: { id: '2', name: 'HOD' },
-          },
-        ],
+        user_roles: {
+          role_id: '2',
+          roles: { id: '2', name: 'HOD' },
+        },
       }
 
       expect(hasRole(user, 'ADMIN')).toBe(false)
@@ -54,7 +50,7 @@ describe('Auth Helper Functions', () => {
         is_active: true,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-        user_roles: [],
+        user_roles: null,
       }
 
       expect(hasRole(user, 'ADMIN')).toBe(false)
@@ -70,12 +66,10 @@ describe('Auth Helper Functions', () => {
         is_active: true,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-        user_roles: [
-          {
-            role_id: '2',
-            roles: { id: '2', name: 'FINANCE' },
-          },
-        ],
+        user_roles: {
+          role_id: '2',
+          roles: { id: '2', name: 'FINANCE' },
+        },
       }
 
       expect(hasAnyRole(user, ['ADMIN', 'FINANCE'])).toBe(true)
@@ -89,12 +83,10 @@ describe('Auth Helper Functions', () => {
         is_active: true,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-        user_roles: [
-          {
-            role_id: '3',
-            roles: { id: '3', name: 'HOD' },
-          },
-        ],
+        user_roles: {
+          role_id: '3',
+          roles: { id: '3', name: 'HOD' },
+        },
       }
 
       expect(hasAnyRole(user, ['ADMIN', 'FINANCE'])).toBe(false)
@@ -105,8 +97,8 @@ describe('Auth Helper Functions', () => {
     })
   })
 
-  describe('getUserRoles', () => {
-    it('should return array of role names', () => {
+  describe('getUserRole', () => {
+    it('should return role name', () => {
       const user: UserWithRoles = {
         id: '123',
         email: 'test@example.com',
@@ -114,27 +106,20 @@ describe('Auth Helper Functions', () => {
         is_active: true,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-        user_roles: [
-          {
-            role_id: '1',
-            roles: { id: '1', name: 'ADMIN' },
-          },
-          {
-            role_id: '2',
-            roles: { id: '2', name: 'FINANCE' },
-          },
-        ],
+        user_roles: {
+          role_id: '1',
+          roles: { id: '1', name: 'ADMIN' },
+        },
       }
 
-      const roles = getUserRoles(user)
-      expect(roles).toEqual(['ADMIN', 'FINANCE'])
+      expect(getUserRole(user)).toBe('ADMIN')
     })
 
-    it('should return empty array when user is null', () => {
-      expect(getUserRoles(null)).toEqual([])
+    it('should return null when user is null', () => {
+      expect(getUserRole(null)).toBeNull()
     })
 
-    it('should return empty array when user has no roles', () => {
+    it('should return null when user has no roles', () => {
       const user: UserWithRoles = {
         id: '123',
         email: 'test@example.com',
@@ -142,10 +127,10 @@ describe('Auth Helper Functions', () => {
         is_active: true,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-        user_roles: [],
+        user_roles: null,
       }
 
-      expect(getUserRoles(user)).toEqual([])
+      expect(getUserRole(user)).toBeNull()
     })
   })
 

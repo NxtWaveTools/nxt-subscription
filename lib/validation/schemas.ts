@@ -69,6 +69,172 @@ export const roleSchemas = {
 }
 
 /**
+ * Admin operation validation schemas
+ */
+export const adminSchemas = {
+  /**
+   * Activate/deactivate user schema
+   */
+  activateUser: z.object({
+    user_id: z.string().uuid('Invalid user ID'),
+    is_active: z.boolean(),
+  }),
+
+  /**
+   * Bulk activate/deactivate users schema
+   */
+  bulkActivateUsers: z.object({
+    user_ids: z.array(z.string().uuid('Invalid user ID')).min(1).max(100, 'Cannot exceed 100 users'),
+    is_active: z.boolean(),
+  }),
+
+  /**
+   * Assign role to user schema
+   */
+  assignRole: z.object({
+    user_id: z.string().uuid('Invalid user ID'),
+    role_id: z.string().regex(/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/, 'Invalid role ID'),
+  }),
+
+  /**
+   * Bulk assign role schema
+   */
+  bulkAssignRole: z.object({
+    user_ids: z.array(z.string().uuid('Invalid user ID')).min(1).max(100, 'Cannot exceed 100 users'),
+    role_id: z.string().regex(/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/, 'Invalid role ID'),
+  }),
+
+  /**
+   * Remove role from user schema
+   */
+  removeRole: z.object({
+    user_id: z.string().uuid('Invalid user ID'),
+    role_id: z.string().regex(/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/, 'Invalid role ID'),
+  }),
+
+  /**
+   * Assign HOD to department schema
+   */
+  assignHODtoDepartment: z.object({
+    hod_id: z.string().uuid('Invalid HOD user ID'),
+    department_id: z.string().uuid('Invalid department ID'),
+  }),
+
+  /**
+   * Assign POC to department schema
+   */
+  assignPOCtoDepartment: z.object({
+    poc_id: z.string().uuid('Invalid POC user ID'),
+    department_id: z.string().uuid('Invalid department ID'),
+  }),
+
+  /**
+   * Map POC to HOD schema
+   */
+  mapPOCtoHOD: z.object({
+    hod_id: z.string().uuid('Invalid HOD user ID'),
+    poc_id: z.string().uuid('Invalid POC user ID'),
+  }),
+
+  /**
+   * Search and filter schema
+   */
+  searchFilter: z.object({
+    search: z.string().optional(),
+    role_id: z.string().uuid('Invalid role ID').optional(),
+    department_id: z.string().uuid('Invalid department ID').optional(),
+    is_active: z.boolean().optional(),
+    date_from: z.coerce.date().optional(),
+    date_to: z.coerce.date().optional(),
+  }),
+
+  /**
+   * Delete department schema (hard delete)
+   */
+  deleteDepartment: z.object({
+    department_id: z.string().uuid('Invalid department ID'),
+  }),
+
+  /**
+   * Create department schema
+   */
+  createDepartment: z.object({
+    name: z.string().min(1, 'Department name is required').max(100, 'Name is too long'),
+  }),
+
+  /**
+   * Update department schema
+   */
+  updateDepartment: z.object({
+    department_id: z.string().uuid('Invalid department ID'),
+    name: z.string().min(1, 'Department name is required').max(100, 'Name is too long').optional(),
+    is_active: z.boolean().optional(),
+  }),
+
+  /**
+   * Bulk delete departments (soft delete)
+   */
+  bulkDeleteDepartments: z.object({
+    department_ids: z.array(z.string().uuid('Invalid department ID')).min(1).max(100, 'Cannot exceed 100 departments'),
+  }),
+
+  /**
+   * Bulk activate/deactivate departments
+   */
+  bulkToggleDepartments: z.object({
+    department_ids: z.array(z.string().uuid('Invalid department ID')).min(1).max(100, 'Cannot exceed 100 departments'),
+    is_active: z.boolean(),
+  }),
+
+  /**
+   * Assign HOD to department
+   */
+  assignHOD: z.object({
+    department_id: z.string().uuid('Invalid department ID'),
+    hod_id: z.string().uuid('Invalid HOD user ID'),
+  }),
+
+  /**
+   * Remove HOD from department
+   */
+  removeHOD: z.object({
+    department_id: z.string().uuid('Invalid department ID'),
+    hod_id: z.string().uuid('Invalid HOD user ID'),
+  }),
+
+  /**
+   * Assign POC to HOD
+   */
+  assignPOC: z.object({
+    hod_id: z.string().uuid('Invalid HOD user ID'),
+    poc_id: z.string().uuid('Invalid POC user ID'),
+  }),
+
+  /**
+   * Remove POC from HOD
+   */
+  removePOC: z.object({
+    hod_id: z.string().uuid('Invalid HOD user ID'),
+  }),
+
+  /**
+   * Grant POC access to department
+   */
+  grantPOCAccess: z.object({
+    poc_id: z.string().uuid('Invalid POC user ID'),
+    department_id: z.string().uuid('Invalid department ID'),
+  }),
+
+  /**
+   * Revoke POC access from department
+   */
+  revokePOCAccess: z.object({
+    poc_id: z.string().uuid('Invalid POC user ID'),
+    department_id: z.string().uuid('Invalid department ID'),
+  }),
+}
+
+/**
  * Pagination validation schemas
  */
 export const paginationSchemas = {
