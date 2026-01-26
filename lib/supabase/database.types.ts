@@ -14,13 +14,222 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      departments: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      hod_departments: {
+        Row: {
+          created_at: string
+          department_id: string
+          hod_id: string
+        }
+        Insert: {
+          created_at?: string
+          department_id: string
+          hod_id: string
+        }
+        Update: {
+          created_at?: string
+          department_id?: string
+          hod_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hod_departments_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hod_departments_hod_id_fkey"
+            columns: ["hod_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hod_poc_mapping: {
+        Row: {
+          created_at: string
+          hod_id: string
+          poc_id: string
+        }
+        Insert: {
+          created_at?: string
+          hod_id: string
+          poc_id: string
+        }
+        Update: {
+          created_at?: string
+          hod_id?: string
+          poc_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hod_poc_mapping_hod_id_fkey"
+            columns: ["hod_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hod_poc_mapping_poc_id_fkey"
+            columns: ["poc_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      poc_department_access: {
+        Row: {
+          created_at: string
+          department_id: string
+          poc_id: string
+        }
+        Insert: {
+          created_at?: string
+          department_id: string
+          poc_id: string
+        }
+        Update: {
+          created_at?: string
+          department_id?: string
+          poc_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "poc_department_access_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "poc_department_access_poc_id_fkey"
+            columns: ["poc_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      roles: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          role_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          role_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          role_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_roles_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "roles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_roles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      users: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          is_active: boolean
+          name: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          is_active?: boolean
+          name?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          is_active?: boolean
+          name?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_any_role: { Args: { role_names: string[] }; Returns: boolean }
+      has_poc_access_to_department: {
+        Args: { dept_id: string }
+        Returns: boolean
+      }
+      has_role: { Args: { role_name: string }; Returns: boolean }
+      is_hod_of_department: { Args: { dept_id: string }; Returns: boolean }
     }
     Enums: {
       [_ in never]: never
