@@ -16,7 +16,12 @@ export async function getCurrentUser(): Promise<UserWithRoles | null> {
   const { data: userProfile } = await supabase
     .from('users')
     .select(`
-      *,
+      id,
+      email,
+      name,
+      is_active,
+      created_at,
+      updated_at,
       user_roles (
         role_id,
         roles (
