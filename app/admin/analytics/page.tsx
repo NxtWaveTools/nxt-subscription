@@ -3,46 +3,28 @@
 // Admin analytics with charts and metrics
 // ============================================================================
 
-import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Skeleton } from '@/components/ui/skeleton'
 import { DepartmentAnalyticsChart } from './components/department-analytics-chart'
 import { RoleDistributionChart } from './components/role-distribution-chart'
 import { UserActivityChart } from './components/user-activity-chart'
 import { Users, Building2, UserCheck, UserX } from 'lucide-react'
+import type { RoleCounts } from '@/lib/types'
+
+// Role stats query result type
+interface RoleStatRow {
+  role_id: string
+  roles: { name: string }
+}
 
 export default async function AnalyticsPage() {
   const supabase = await createClient()
 
-  // Fetch department analytics - simplified approach
-  const { data: departments } = await supabase
-    .from('departments')
-    .select('id, name, is_active')
+  // Use the department_analytics view instead of N+1 queries
+  const { data: departmentAnalytics } = await supabase
+    .from('department_analytics')
+    .select('*')
     .eq('is_active', true)
-
-  // Calculate stats for each department
-  const departmentAnalytics = await Promise.all(
-    (departments || []).map(async (dept) => {
-      const { count: hodCount } = await supabase
-        .from('hod_departments')
-        .select('*', { count: 'exact', head: true })
-        .eq('department_id', dept.id)
-
-      const { count: pocCount } = await supabase
-        .from('poc_department_access')
-        .select('*', { count: 'exact', head: true })
-        .eq('department_id', dept.id)
-
-      return {
-        department_name: dept.name,
-        total_users: (hodCount || 0) + (pocCount || 0),
-        active_users: (hodCount || 0) + (pocCount || 0),
-        hod_count: hodCount || 0,
-        poc_count: pocCount || 0,
-      }
-    })
-  )
 
   // Fetch role distribution
   const { data: roleStats } = await supabase
@@ -53,7 +35,7 @@ export default async function AnalyticsPage() {
     `)
 
   // Count roles
-  const roleCounts = roleStats?.reduce((acc: any, ur: any) => {
+  const roleCounts = (roleStats as RoleStatRow[] | null)?.reduce<RoleCounts>((acc, ur) => {
     const roleName = ur.roles.name
     acc[roleName] = (acc[roleName] || 0) + 1
     return acc
@@ -142,9 +124,7 @@ export default async function AnalyticsPage() {
             <CardDescription>Users per department</CardDescription>
           </CardHeader>
           <CardContent>
-            <Suspense fallback={<Skeleton className="h-[300px]" />}>
-              <DepartmentAnalyticsChart data={departmentAnalytics || []} />
-            </Suspense>
+            <DepartmentAnalyticsChart data={departmentAnalytics || []} />
           </CardContent>
         </Card>
 
@@ -154,9 +134,7 @@ export default async function AnalyticsPage() {
             <CardDescription>User count by role</CardDescription>
           </CardHeader>
           <CardContent>
-            <Suspense fallback={<Skeleton className="h-[300px]" />}>
-              <RoleDistributionChart data={roleCounts || {}} />
-            </Suspense>
+            <RoleDistributionChart data={roleCounts || {}} />
           </CardContent>
         </Card>
       </div>
@@ -167,9 +145,7 @@ export default async function AnalyticsPage() {
           <CardDescription>Active vs Inactive users</CardDescription>
         </CardHeader>
         <CardContent>
-          <Suspense fallback={<Skeleton className="h-[300px]" />}>
-            <UserActivityChart active={activeUsers || 0} inactive={inactiveUsers} />
-          </Suspense>
+          <UserActivityChart active={activeUsers || 0} inactive={inactiveUsers} />
         </CardContent>
       </Card>
     </div>

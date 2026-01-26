@@ -5,7 +5,7 @@
 
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Dialog,
@@ -46,37 +46,32 @@ interface ManageHODDialogProps {
   }
 }
 
-export function ManageHODDialog({
-  open,
-  onOpenChange,
+// Inner form component that resets state via key prop on department change
+function ManageHODForm({
   department,
-}: ManageHODDialogProps) {
+  onOpenChange,
+}: {
+  department: ManageHODDialogProps['department']
+  onOpenChange: (open: boolean) => void
+}) {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
-  const [searchResults, setSearchResults] = useState<SearchResult[]>([])
+  const [rawSearchResults, setRawSearchResults] = useState<SearchResult[]>([])
   const [isSearching, setIsSearching] = useState(false)
   
-  // Local state for immediate UI updates
+  // Local state for immediate UI updates - initialized from props
   const [localHODs, setLocalHODs] = useState<HODUser[]>(department.hod_departments || [])
 
-  // Sync local state when department prop changes
-  useEffect(() => {
-    setLocalHODs(department.hod_departments || [])
-  }, [department.hod_departments])
+  // Derive search results - empty when no query (memoized for stable reference)
+  const searchResults = useMemo(
+    () => (searchQuery.trim() ? rawSearchResults : []),
+    [searchQuery, rawSearchResults]
+  )
 
-  // Reset search when dialog opens/closes
-  useEffect(() => {
-    if (!open) {
-      setSearchQuery('')
-      setSearchResults([])
-    }
-  }, [open])
-
-  // Debounced search
+  // Debounced search - fetches data from external API
   useEffect(() => {
     if (!searchQuery.trim()) {
-      setSearchResults([])
       return
     }
 
@@ -85,7 +80,7 @@ export function ManageHODDialog({
       const excludeIds = localHODs.map(h => h.hod_id)
       const result = await searchHODUsers(searchQuery, excludeIds)
       if (result.success) {
-        setSearchResults(result.data)
+        setRawSearchResults(result.data)
       }
       setIsSearching(false)
     }, 300)
@@ -93,7 +88,7 @@ export function ManageHODDialog({
     return () => clearTimeout(timer)
   }, [searchQuery, localHODs])
 
-  const handleAssignHOD = async (hodId: string) => {
+  const handleAssignHOD = useCallback(async (hodId: string) => {
     const hodToAdd = searchResults.find(h => h.id === hodId)
     if (!hodToAdd) return
 
@@ -110,7 +105,7 @@ export function ManageHODDialog({
     }
     setLocalHODs(prev => [...prev, newHOD])
     setSearchQuery('')
-    setSearchResults([])
+    setRawSearchResults([])
 
     const result = await assignHODToDepartment(department.id, hodId)
     setIsLoading(false)
@@ -123,9 +118,9 @@ export function ManageHODDialog({
       setLocalHODs(prev => prev.filter(h => h.hod_id !== hodToAdd.id))
       toast.error(result.error || 'Failed to assign HOD')
     }
-  }
+  }, [searchResults, department.id, router])
 
-  const handleRemoveHOD = async (hodId: string) => {
+  const handleRemoveHOD = useCallback(async (hodId: string) => {
     const removedHOD = localHODs.find(h => h.hod_id === hodId)
     if (!removedHOD) return
 
@@ -145,108 +140,126 @@ export function ManageHODDialog({
       setLocalHODs(prev => [...prev, removedHOD])
       toast.error(result.error || 'Failed to remove HOD')
     }
-  }
+  }, [localHODs, department.id, router])
 
+  return (
+    <>
+      <DialogHeader>
+        <DialogTitle>Manage HODs</DialogTitle>
+        <DialogDescription>
+          Assign or remove Heads of Department for {department.name}
+        </DialogDescription>
+      </DialogHeader>
+
+      <div className="space-y-4 py-4">
+        {/* Current HODs */}
+        <div>
+          <label className="text-sm font-medium mb-2 block">Current HODs</label>
+          {localHODs.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No HODs assigned</p>
+          ) : (
+            <div className="space-y-2">
+              {localHODs.map((hod) => (
+                <div
+                  key={hod.hod_id}
+                  className="flex items-center justify-between p-2 border rounded-lg"
+                >
+                  <div>
+                    <p className="text-sm font-medium">{hod.users.name || 'No name'}</p>
+                    <p className="text-xs text-muted-foreground">{hod.users.email}</p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleRemoveHOD(hod.hod_id)}
+                    disabled={isLoading}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Add HOD with Search */}
+        <div>
+          <label className="text-sm font-medium mb-2 block">Add HOD</label>
+          {/* Search Input */}
+          <div className="relative mb-2">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by name or email..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+            {isSearching && (
+              <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+            )}
+          </div>
+          
+          {/* Search Results */}
+          {searchQuery.trim() && (
+            <div className="border rounded-lg max-h-48 overflow-y-auto">
+              {isSearching ? (
+                <div className="p-3 text-sm text-muted-foreground text-center">
+                  Searching...
+                </div>
+              ) : searchResults.length === 0 ? (
+                <div className="p-3 text-sm text-muted-foreground text-center">
+                  No matching HODs found
+                </div>
+              ) : (
+                searchResults.map((hod) => (
+                  <div
+                    key={hod.id}
+                    className="flex items-center justify-between p-2 hover:bg-muted/50 cursor-pointer border-b last:border-b-0"
+                    onClick={() => !isLoading && handleAssignHOD(hod.id)}
+                  >
+                    <div>
+                      <p className="text-sm font-medium">{hod.name || 'No name'}</p>
+                      <p className="text-xs text-muted-foreground">{hod.email}</p>
+                    </div>
+                    <UserPlus className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+
+          {!searchQuery.trim() && (
+            <p className="text-xs text-muted-foreground">
+              Type to search for users with HOD role
+            </p>
+          )}
+        </div>
+      </div>
+
+      <DialogFooter>
+        <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
+          Close
+        </Button>
+      </DialogFooter>
+    </>
+  )
+}
+
+// Wrapper component that uses key to reset form state when department changes
+export function ManageHODDialog({
+  open,
+  onOpenChange,
+  department,
+}: ManageHODDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>Manage HODs</DialogTitle>
-          <DialogDescription>
-            Assign or remove Heads of Department for {department.name}
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-4 py-4">
-          {/* Current HODs */}
-          <div>
-            <label className="text-sm font-medium mb-2 block">Current HODs</label>
-            {localHODs.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No HODs assigned</p>
-            ) : (
-              <div className="space-y-2">
-                {localHODs.map((hod) => (
-                  <div
-                    key={hod.hod_id}
-                    className="flex items-center justify-between p-2 border rounded-lg"
-                  >
-                    <div>
-                      <p className="text-sm font-medium">{hod.users.name || 'No name'}</p>
-                      <p className="text-xs text-muted-foreground">{hod.users.email}</p>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleRemoveHOD(hod.hod_id)}
-                      disabled={isLoading}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Add HOD with Search */}
-          <div>
-            <label className="text-sm font-medium mb-2 block">Add HOD</label>
-            {/* Search Input */}
-            <div className="relative mb-2">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search by name or email..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
-              />
-              {isSearching && (
-                <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
-              )}
-            </div>
-            
-            {/* Search Results */}
-            {searchQuery.trim() && (
-              <div className="border rounded-lg max-h-48 overflow-y-auto">
-                {isSearching ? (
-                  <div className="p-3 text-sm text-muted-foreground text-center">
-                    Searching...
-                  </div>
-                ) : searchResults.length === 0 ? (
-                  <div className="p-3 text-sm text-muted-foreground text-center">
-                    No matching HODs found
-                  </div>
-                ) : (
-                  searchResults.map((hod) => (
-                    <div
-                      key={hod.id}
-                      className="flex items-center justify-between p-2 hover:bg-muted/50 cursor-pointer border-b last:border-b-0"
-                      onClick={() => !isLoading && handleAssignHOD(hod.id)}
-                    >
-                      <div>
-                        <p className="text-sm font-medium">{hod.name || 'No name'}</p>
-                        <p className="text-xs text-muted-foreground">{hod.email}</p>
-                      </div>
-                      <UserPlus className="h-4 w-4 text-muted-foreground" />
-                    </div>
-                  ))
-                )}
-              </div>
-            )}
-
-            {!searchQuery.trim() && (
-              <p className="text-xs text-muted-foreground">
-                Type to search for users with HOD role
-              </p>
-            )}
-          </div>
-        </div>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
-            Close
-          </Button>
-        </DialogFooter>
+        {/* Key prop causes form to remount and reset state when department changes */}
+        <ManageHODForm
+          key={department.id}
+          department={department}
+          onOpenChange={onOpenChange}
+        />
       </DialogContent>
     </Dialog>
   )

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import type { UserWithRoles, Role } from '@/lib/types'
+import type { UserWithRoles } from '@/lib/types'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { DataTable } from '@/components/ui/data-table'
@@ -10,6 +10,7 @@ import { deleteUser } from '../../actions/users'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import type { Row } from '@tanstack/react-table'
 
 interface UsersTableProps {
   users: UserWithRoles[]
@@ -51,12 +52,12 @@ export function UsersTable({ users, roles }: UsersTableProps) {
     {
       accessorKey: 'name',
       header: 'Name',
-      cell: ({ row }: any) => row.original.name || '-',
+      cell: ({ row }: { row: Row<UserWithRoles> }) => row.original.name || '-',
     },
     {
       id: 'roles',
       header: 'Role',
-      cell: ({ row }: any) => {
+      cell: ({ row }: { row: Row<UserWithRoles> }) => {
         const userRole = row.original.user_roles
         return (
           <div className="flex gap-1 flex-wrap">
@@ -74,7 +75,7 @@ export function UsersTable({ users, roles }: UsersTableProps) {
     {
       accessorKey: 'is_active',
       header: 'Status',
-      cell: ({ row }: any) => (
+      cell: ({ row }: { row: Row<UserWithRoles> }) => (
         <Badge variant={row.original.is_active ? 'default' : 'secondary'}>
           {row.original.is_active ? 'Active' : 'Inactive'}
         </Badge>
@@ -83,7 +84,7 @@ export function UsersTable({ users, roles }: UsersTableProps) {
     {
       id: 'actions',
       header: 'Actions',
-      cell: ({ row }: any) => {
+      cell: ({ row }: { row: Row<UserWithRoles> }) => {
         const user = row.original
         return (
           <div className="flex gap-2">

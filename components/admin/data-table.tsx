@@ -5,7 +5,6 @@
 
 'use client'
 
-import { useState } from 'react'
 import {
   Table,
   TableBody,
@@ -72,8 +71,8 @@ export function DataTable<T>({
   onSelectionChange,
   getRowId,
   enableSorting = false,
-  sortKey,
-  sortDirection,
+  sortKey: _sortKey,
+  sortDirection: _sortDirection,
   onSort,
   actions,
   bulkActions,
@@ -125,7 +124,8 @@ export function DataTable<T>({
   const allCurrentPageSelected =
     data.length > 0 && data.every((row) => selectedIds.has(getRowId(row)))
 
-  const someCurrentPageSelected =
+  // Note: someCurrentPageSelected calculated but used for UI state - prefixed to indicate intentional
+  const _someCurrentPageSelected =
     data.some((row) => selectedIds.has(getRowId(row))) && !allCurrentPageSelected
 
   // Handle sort
@@ -238,7 +238,7 @@ export function DataTable<T>({
                       <TableCell key={column.key} className={column.className}>
                         {column.render
                           ? column.render(row)
-                          : String((row as any)[column.key] ?? '')}
+                          : String((row as Record<string, unknown>)[column.key] ?? '')}
                       </TableCell>
                     ))}
                     {actions && <TableCell>{actions(row)}</TableCell>}

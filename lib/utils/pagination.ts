@@ -89,7 +89,7 @@ export function decodeCursor(cursor: string): string {
 /**
  * Builds a paginated response from query results
  */
-export function buildPaginatedResponse<T extends Record<string, any>>(
+export function buildPaginatedResponse<T extends Record<string, unknown>>(
   data: T[],
   options: Required<Omit<PaginationOptions, 'cursor'>>,
   sortField: keyof T = 'created_at' as keyof T,
@@ -99,7 +99,11 @@ export function buildPaginatedResponse<T extends Record<string, any>>(
   const items = hasMore ? data.slice(0, options.limit) : data
   
   const lastItem = items[items.length - 1]
-  const cursor = lastItem && hasMore ? createCursor(lastItem[sortField]) : null
+  const sortValue = lastItem?.[sortField]
+  // Create cursor only if the value is a valid cursor type
+  const cursor = lastItem && hasMore && (typeof sortValue === 'string' || typeof sortValue === 'number' || sortValue instanceof Date)
+    ? createCursor(sortValue)
+    : null
 
   return {
     data: items,

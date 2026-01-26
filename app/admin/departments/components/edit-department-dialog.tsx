@@ -5,7 +5,7 @@
 
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Dialog,
@@ -30,19 +30,17 @@ interface EditDepartmentDialogProps {
   }
 }
 
-export function EditDepartmentDialog({
-  open,
-  onOpenChange,
+// Inner component that resets state when department changes via key prop
+function EditDepartmentForm({
   department,
-}: EditDepartmentDialogProps) {
+  onOpenChange,
+}: {
+  department: { id: string; name: string }
+  onOpenChange: (open: boolean) => void
+}) {
   const router = useRouter()
   const [name, setName] = useState(department.name)
   const [isLoading, setIsLoading] = useState(false)
-
-  // Reset name when department changes
-  useEffect(() => {
-    setName(department.name)
-  }, [department.name])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -72,41 +70,57 @@ export function EditDepartmentDialog({
   }
 
   return (
+    <form onSubmit={handleSubmit}>
+      <DialogHeader>
+        <DialogTitle>Edit Department</DialogTitle>
+        <DialogDescription>
+          Update the department name.
+        </DialogDescription>
+      </DialogHeader>
+      <div className="py-4">
+        <div className="space-y-2">
+          <Label htmlFor="edit-name">Department Name</Label>
+          <Input
+            id="edit-name"
+            placeholder="e.g., Engineering, Sales, Marketing"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            disabled={isLoading}
+          />
+        </div>
+      </div>
+      <DialogFooter>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => onOpenChange(false)}
+          disabled={isLoading}
+        >
+          Cancel
+        </Button>
+        <Button type="submit" disabled={isLoading}>
+          {isLoading ? 'Saving...' : 'Save Changes'}
+        </Button>
+      </DialogFooter>
+    </form>
+  )
+}
+
+// Wrapper component that uses key to reset form state when department changes
+export function EditDepartmentDialog({
+  open,
+  onOpenChange,
+  department,
+}: EditDepartmentDialogProps) {
+  return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
-        <form onSubmit={handleSubmit}>
-          <DialogHeader>
-            <DialogTitle>Edit Department</DialogTitle>
-            <DialogDescription>
-              Update the department name.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            <div className="space-y-2">
-              <Label htmlFor="edit-name">Department Name</Label>
-              <Input
-                id="edit-name"
-                placeholder="e.g., Engineering, Sales, Marketing"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                disabled={isLoading}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={isLoading}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? 'Saving...' : 'Save Changes'}
-            </Button>
-          </DialogFooter>
-        </form>
+        {/* Key prop causes form to remount and reset state when department changes */}
+        <EditDepartmentForm
+          key={department.id}
+          department={department}
+          onOpenChange={onOpenChange}
+        />
       </DialogContent>
     </Dialog>
   )

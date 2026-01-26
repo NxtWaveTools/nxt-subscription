@@ -112,7 +112,7 @@ describe('Pagination Utilities', () => {
     })
 
     it('should handle empty data', () => {
-      const data: any[] = []
+      const data: Record<string, unknown>[] = []
       const options = { limit: 10, sortBy: 'created_at', sortOrder: 'desc' as const }
 
       const result = buildPaginatedResponse(data, options)

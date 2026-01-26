@@ -8,6 +8,28 @@ import { createClient } from '@/lib/supabase/server'
 import { requireAdmin } from '@/lib/auth/user'
 import Papa from 'papaparse'
 
+// Types for raw Supabase export data (returns arrays for joins)
+interface UserExportRowRaw {
+  id: string
+  email: string
+  name: string | null
+  is_active: boolean
+  created_at: string
+  user_roles: Array<{
+    roles: { name: string }
+  }>
+}
+
+interface DepartmentExportRow {
+  id: string
+  name: string
+  is_active: boolean
+  created_at: string
+  hod_departments: Array<{
+    users: { name: string | null; email: string }
+  }>
+}
+
 export async function GET(request: NextRequest) {
   try {
     // Require admin
@@ -40,13 +62,13 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: 'Failed to fetch users' }, { status: 500 })
       }
 
-      // Transform data for CSV
-      const csvData = users.map((user: any) => ({
+      // Transform data for CSV (normalize array to single object)
+      const csvData = ((users || []) as UserExportRowRaw[]).map((user) => ({
         ID: user.id,
         Email: user.email,
         Name: user.name || '',
         Status: user.is_active ? 'Active' : 'Inactive',
-        Roles: user.user_roles?.map((ur: any) => ur.roles.name).join(', ') || 'No roles',
+        Role: user.user_roles?.[0]?.roles?.name || 'No role',
         'Created At': new Date(user.created_at).toISOString(),
       }))
 
@@ -81,12 +103,12 @@ export async function GET(request: NextRequest) {
       }
 
       // Transform data for CSV
-      const csvData = departments.map((dept: any) => ({
+      const csvData = (departments as DepartmentExportRow[]).map((dept) => ({
         ID: dept.id,
         Name: dept.name,
         Status: dept.is_active ? 'Active' : 'Inactive',
         HODs: dept.hod_departments
-          ?.map((hd: any) => `${hd.users.name || hd.users.email}`)
+          ?.map((hd) => hd.users.name || hd.users.email)
           .join(', ') || 'No HODs',
         'Created At': new Date(dept.created_at).toISOString(),
       }))
@@ -100,30 +122,21 @@ export async function GET(request: NextRequest) {
         },
       })
     } else if (type === 'analytics') {
-      // Export department analytics using direct query
-      const { data: departments, error: deptError } = await supabase
-        .from('departments')
-        .select('id, name, is_active')
+      // Export department analytics using the view
+      const { data: analytics, error: analyticsError } = await supabase
+        .from('department_analytics')
+        .select('name, is_active, hod_count, poc_count')
 
-      if (deptError) {
+      if (analyticsError) {
         return NextResponse.json({ error: 'Failed to fetch analytics' }, { status: 500 })
       }
 
-      // Fetch counts for each department
-      const csvData = await Promise.all(
-        (departments || []).map(async (dept: any) => {
-          const { count: totalUsers } = await supabase
-            .from('hod_departments')
-            .select('*', { count: 'exact', head: true })
-            .eq('department_id', dept.id)
-
-          return {
-            Department: dept.name,
-            Status: dept.is_active ? 'Active' : 'Inactive',
-            'Total HODs': totalUsers || 0,
-          }
-        })
-      )
+      const csvData = (analytics || []).map((dept) => ({
+        Department: dept.name,
+        Status: dept.is_active ? 'Active' : 'Inactive',
+        'Total HODs': dept.hod_count || 0,
+        'Total POCs': dept.poc_count || 0,
+      }))
 
       const csv = Papa.unparse(csvData)
 

@@ -9,7 +9,9 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { requireAdmin } from '@/lib/auth/user'
 import { adminSchemas } from '@/lib/validation/schemas'
-import { BULK_BATCH_SIZE } from '@/lib/constants'
+import { BULK_BATCH_SIZE, ROLE_IDS } from '@/lib/constants'
+import type { Database } from '@/lib/supabase/database.types'
+import type { UserRoleQueryResult, SimpleUser } from '@/lib/types'
 
 // ============================================================================
 // Department CRUD Operations
@@ -125,7 +127,7 @@ export async function updateDepartment(
     }
 
     // Update department
-    const updateData: any = {
+    const updateData: Database['public']['Tables']['departments']['Update'] = {
       updated_at: new Date().toISOString(),
     }
     if (validated.name) updateData.name = validated.name
@@ -336,7 +338,7 @@ export async function assignHODToDepartment(departmentId: string, hodId: string)
       .from('user_roles')
       .select('role_id')
       .eq('user_id', validated.hod_id)
-      .eq('role_id', '00000000-0000-0000-0000-000000000003') // HOD role UUID
+      .eq('role_id', ROLE_IDS.HOD)
       .maybeSingle()
 
     if (!hasRole) {
@@ -463,7 +465,7 @@ export async function assignPOCToHOD(hodId: string, pocId: string) {
       .from('user_roles')
       .select('role_id')
       .eq('user_id', validated.poc_id)
-      .eq('role_id', '00000000-0000-0000-0000-000000000004') // POC role UUID
+      .eq('role_id', ROLE_IDS.POC)
       .maybeSingle()
 
     if (!hasRole) {
@@ -583,7 +585,7 @@ export async function grantPOCAccessToDepartment(pocId: string, departmentId: st
       .from('user_roles')
       .select('role_id')
       .eq('user_id', validated.poc_id)
-      .eq('role_id', '00000000-0000-0000-0000-000000000004') // POC role UUID
+      .eq('role_id', ROLE_IDS.POC)
       .maybeSingle()
 
     if (!hasRole) {
@@ -701,7 +703,7 @@ export async function searchHODUsers(query: string, excludeIds: string[] = []) {
     const supabase = await createClient()
 
     // Search users with HOD role
-    let dbQuery = supabase
+    const dbQuery = supabase
       .from('user_roles')
       .select(`
         user_id,
@@ -712,7 +714,7 @@ export async function searchHODUsers(query: string, excludeIds: string[] = []) {
           is_active
         )
       `)
-      .eq('role_id', '00000000-0000-0000-0000-000000000003') // HOD role
+      .eq('role_id', ROLE_IDS.HOD)
 
     const { data: hodUsers, error } = await dbQuery
 
@@ -726,16 +728,18 @@ export async function searchHODUsers(query: string, excludeIds: string[] = []) {
     const excludeSet = new Set(excludeIds)
 
     const filtered = (hodUsers || [])
-      .filter((ur: any) => ur.users?.is_active)
-      .filter((ur: any) => !excludeSet.has(ur.users?.id))
-      .filter((ur: any) => {
+      .filter((ur): ur is UserRoleQueryResult & { users: NonNullable<UserRoleQueryResult['users']> } => 
+        ur.users !== null && ur.users.is_active
+      )
+      .filter((ur) => !excludeSet.has(ur.users.id))
+      .filter((ur) => {
         if (!searchLower) return true
-        const name = ur.users?.name?.toLowerCase() || ''
-        const email = ur.users?.email?.toLowerCase() || ''
+        const name = ur.users.name?.toLowerCase() || ''
+        const email = ur.users.email.toLowerCase()
         return name.includes(searchLower) || email.includes(searchLower)
       })
       .slice(0, 10)
-      .map((ur: any) => ({
+      .map((ur): SimpleUser => ({
         id: ur.users.id,
         name: ur.users.name,
         email: ur.users.email,
@@ -759,7 +763,7 @@ export async function searchPOCUsers(query: string, excludeIds: string[] = []) {
     const supabase = await createClient()
 
     // Search users with POC role
-    let dbQuery = supabase
+    const dbQuery = supabase
       .from('user_roles')
       .select(`
         user_id,
@@ -770,7 +774,7 @@ export async function searchPOCUsers(query: string, excludeIds: string[] = []) {
           is_active
         )
       `)
-      .eq('role_id', '00000000-0000-0000-0000-000000000004') // POC role
+      .eq('role_id', ROLE_IDS.POC)
 
     const { data: pocUsers, error } = await dbQuery
 
@@ -784,16 +788,18 @@ export async function searchPOCUsers(query: string, excludeIds: string[] = []) {
     const excludeSet = new Set(excludeIds)
 
     const filtered = (pocUsers || [])
-      .filter((ur: any) => ur.users?.is_active)
-      .filter((ur: any) => !excludeSet.has(ur.users?.id))
-      .filter((ur: any) => {
+      .filter((ur): ur is UserRoleQueryResult & { users: NonNullable<UserRoleQueryResult['users']> } => 
+        ur.users !== null && ur.users.is_active
+      )
+      .filter((ur) => !excludeSet.has(ur.users.id))
+      .filter((ur) => {
         if (!searchLower) return true
-        const name = ur.users?.name?.toLowerCase() || ''
-        const email = ur.users?.email?.toLowerCase() || ''
+        const name = ur.users.name?.toLowerCase() || ''
+        const email = ur.users.email.toLowerCase()
         return name.includes(searchLower) || email.includes(searchLower)
       })
       .slice(0, 10)
-      .map((ur: any) => ({
+      .map((ur): SimpleUser => ({
         id: ur.users.id,
         name: ur.users.name,
         email: ur.users.email,

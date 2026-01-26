@@ -7,13 +7,17 @@
 
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 
+// Type matches the department_analytics view from Supabase
 interface DepartmentAnalyticsChartProps {
   data: Array<{
-    department_name: string | null
-    total_users: number | null
-    active_users: number | null
+    id: string | null
+    name: string | null
+    is_active: boolean | null
+    active_user_count: number | null
     hod_count: number | null
     poc_count: number | null
+    created_at: string | null
+    updated_at: string | null
   }>
 }
 
@@ -27,10 +31,10 @@ export function DepartmentAnalyticsChart({ data }: DepartmentAnalyticsChartProps
   }
 
   const chartData = data.map((dept) => ({
-    name: dept.department_name || 'Unknown',
-    total: dept.total_users || 0,
-    active: dept.active_users || 0,
-    inactive: (dept.total_users || 0) - (dept.active_users || 0),
+    name: dept.name || 'Unknown',
+    activeUsers: dept.active_user_count || 0,
+    hodCount: dept.hod_count || 0,
+    pocCount: dept.poc_count || 0,
   }))
 
   return (
@@ -41,8 +45,9 @@ export function DepartmentAnalyticsChart({ data }: DepartmentAnalyticsChartProps
         <YAxis />
         <Tooltip />
         <Legend />
-        <Bar dataKey="active" fill="#22c55e" name="Active Users" />
-        <Bar dataKey="inactive" fill="#ef4444" name="Inactive Users" />
+        <Bar dataKey="activeUsers" fill="#22c55e" name="Active Users" />
+        <Bar dataKey="hodCount" fill="#3b82f6" name="HODs" />
+        <Bar dataKey="pocCount" fill="#8b5cf6" name="POCs" />
       </BarChart>
     </ResponsiveContainer>
   )

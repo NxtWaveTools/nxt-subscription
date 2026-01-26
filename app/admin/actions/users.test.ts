@@ -27,39 +27,61 @@ vi.mock('@/lib/supabase/server', () => ({
   createAdminClient: vi.fn(),
 }))
 
+// Mock types for Supabase client methods
+type MockAuthAdmin = {
+  deleteUser: ReturnType<typeof vi.fn>
+}
+
+type MockSupabaseClient = {
+  from: ReturnType<typeof vi.fn>
+  select: ReturnType<typeof vi.fn>
+  insert: ReturnType<typeof vi.fn>
+  update: ReturnType<typeof vi.fn>
+  delete: ReturnType<typeof vi.fn>
+  upsert: ReturnType<typeof vi.fn>
+  eq: ReturnType<typeof vi.fn>
+  neq: ReturnType<typeof vi.fn>
+  in: ReturnType<typeof vi.fn>
+  single: ReturnType<typeof vi.fn>
+  maybeSingle: ReturnType<typeof vi.fn>
+  auth: { admin: MockAuthAdmin }
+}
+
+type MockAdminClient = {
+  auth: { admin: MockAuthAdmin }
+}
+
 // Create mock functions that won't be cleared
-const createMockSupabase = () => {
-  const mock: any = {
-    from: vi.fn(() => mock),
-    select: vi.fn(() => mock),
-    insert: vi.fn(() => mock),
-    update: vi.fn(() => mock),
-    delete: vi.fn(() => mock),
-    upsert: vi.fn(() => mock),
-    eq: vi.fn(() => mock),
-    neq: vi.fn(() => mock),
-    in: vi.fn(() => mock),
-    single: vi.fn(() => mock),
-    maybeSingle: vi.fn(() => mock),
-    auth: {
-      admin: {
-        deleteUser: vi.fn(),
-      },
+const createMockSupabase = (): MockSupabaseClient => {
+  const mock = {} as MockSupabaseClient
+  mock.from = vi.fn(() => mock)
+  mock.select = vi.fn(() => mock)
+  mock.insert = vi.fn(() => mock)
+  mock.update = vi.fn(() => mock)
+  mock.delete = vi.fn(() => mock)
+  mock.upsert = vi.fn(() => mock)
+  mock.eq = vi.fn(() => mock)
+  mock.neq = vi.fn(() => mock)
+  mock.in = vi.fn(() => mock)
+  mock.single = vi.fn(() => mock)
+  mock.maybeSingle = vi.fn(() => mock)
+  mock.auth = {
+    admin: {
+      deleteUser: vi.fn(),
     },
   }
   return mock
 }
 
 // Create admin mock for admin operations
-const createMockAdminClient = () => {
-  const mock: any = {
+const createMockAdminClient = (): MockAdminClient => {
+  return {
     auth: {
       admin: {
         deleteUser: vi.fn(),
       },
     },
   }
-  return mock
 }
 
 let mockAdminClient: ReturnType<typeof createMockAdminClient>
@@ -74,19 +96,30 @@ describe('User Actions', () => {
     
     // Import and setup createClient mock
     const supabaseModule = await import('@/lib/supabase/server')
-    vi.mocked(supabaseModule.createClient).mockResolvedValue(mockSupabase as any)
-    vi.mocked(supabaseModule.createAdminClient).mockReturnValue(mockAdminClient as any)
+    vi.mocked(supabaseModule.createClient).mockResolvedValue(mockSupabase as unknown as Awaited<ReturnType<typeof supabaseModule.createClient>>)
+    vi.mocked(supabaseModule.createAdminClient).mockReturnValue(mockAdminClient as unknown as ReturnType<typeof supabaseModule.createAdminClient>)
     
-    // Mock getCurrentUser and hasRole
+    // Mock getCurrentUser, hasRole, and requireAdmin
     vi.mocked(authModule.getCurrentUser).mockResolvedValue({
       id: ADMIN_USER_ID,
       email: 'admin@test.com',
+      name: 'Admin User',
       roles: ['ADMIN'],
       is_active: true,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
-    } as any)
+    } as Awaited<ReturnType<typeof authModule.getCurrentUser>>)
     vi.mocked(authModule.hasRole).mockReturnValue(true)
+    // Default: requireAdmin resolves successfully (allows action to proceed)
+    vi.mocked(authModule.requireAdmin).mockResolvedValue({
+      id: ADMIN_USER_ID,
+      email: 'admin@test.com',
+      name: 'Admin User',
+      roles: ['ADMIN'],
+      is_active: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    } as Awaited<ReturnType<typeof authModule.requireAdmin>>)
   })
 
   afterEach(() => {
@@ -126,9 +159,10 @@ describe('User Actions', () => {
     })
 
     it('should require admin permission', async () => {
-      vi.mocked(authModule.getCurrentUser).mockResolvedValueOnce(null as any)
+      // Mock requireAdmin to throw unauthorized error
+      vi.mocked(authModule.requireAdmin).mockRejectedValue(new Error('Unauthorized: No user found'))
 
-      const result = await userActions.toggleUserActive('user-1', true)
+      const result = await userActions.toggleUserActive(TEST_USER_ID_1, true)
 
       expect(result.success).toBe(false)
       expect(result.error).toContain('Unauthorized')
@@ -292,8 +326,8 @@ describe('User Actions', () => {
     })
 
     it('should require admin permission', async () => {
-      vi.mocked(authModule.hasRole).mockReturnValueOnce(false)
-      vi.mocked(authModule.hasRole).mockReturnValueOnce(false) // Check both ADMIN and FINANCE
+      // Mock requireAdmin to throw unauthorized error
+      vi.mocked(authModule.requireAdmin).mockRejectedValue(new Error('Unauthorized: No user found'))
 
       const result = await userActions.deleteUser(TEST_USER_ID_1)
 
@@ -304,16 +338,18 @@ describe('User Actions', () => {
 
   describe('Permission checks', () => {
     it('should reject users without admin role', async () => {
-      vi.mocked(authModule.hasRole).mockReturnValue(false)
+      // Mock requireAdmin to throw forbidden error (user exists but no admin role)
+      vi.mocked(authModule.requireAdmin).mockRejectedValue(new Error('Forbidden: Admin or Finance role required'))
 
       const result = await userActions.toggleUserActive(TEST_USER_ID_1, true)
 
       expect(result.success).toBe(false)
-      expect(result.error).toContain('Unauthorized')
+      expect(result.error).toContain('Forbidden')
     })
 
     it('should reject unauthenticated requests', async () => {
-      vi.mocked(authModule.getCurrentUser).mockResolvedValue(null as any)
+      // Mock requireAdmin to throw unauthorized error
+      vi.mocked(authModule.requireAdmin).mockRejectedValue(new Error('Unauthorized: No user found'))
 
       const result = await userActions.assignRoleToUser(TEST_USER_ID_1, TEST_ROLE_ID_1)
 
@@ -349,7 +385,7 @@ describe('User Actions', () => {
     })
 
     it('should validate boolean values for activation', async () => {
-      const result = await userActions.toggleUserActive(TEST_USER_ID_1, 'true' as any)
+      const result = await userActions.toggleUserActive(TEST_USER_ID_1, 'true' as unknown as boolean)
 
       expect(result.success).toBe(false)
     })

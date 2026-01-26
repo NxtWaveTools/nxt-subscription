@@ -150,8 +150,8 @@ describe('Auth Helper Functions', () => {
     })
 
     it('should return false when is_active is undefined', () => {
-      const user = {} as any
-      expect(isUserActive(user)).toBe(false)
+      const user = {} as Partial<UserWithRoles>
+      expect(isUserActive(user as UserWithRoles)).toBe(false)
     })
   })
 })

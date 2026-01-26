@@ -11,7 +11,7 @@ import { DataTable, type Column } from '@/components/admin/data-table'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
-import { MoreHorizontal, Users, UserCog, UserCheck, Trash2 } from 'lucide-react'
+import { MoreHorizontal, UserCog, UserCheck, Trash2 } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,

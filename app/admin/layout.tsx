@@ -4,7 +4,7 @@
 
 import { redirect } from 'next/navigation'
 import { getCurrentUser, hasRole } from '@/lib/auth/user'
-import { ROUTES, ADMIN_ROUTES } from '@/lib/constants'
+import { ROUTES } from '@/lib/constants'
 import { AdminNav } from './components/admin-nav'
 
 export default async function AdminLayout({
@@ -15,13 +15,14 @@ export default async function AdminLayout({
   // Verify user is authenticated and has ADMIN or FINANCE role
   const user = await getCurrentUser()
 
-  if (!user) {
-    redirect(ROUTES.LOGIN)
+  // If no user profile exists (auth but no profile), or inactive user
+  if (!user || !user.is_active) {
+    redirect(ROUTES.UNAUTHORIZED)
   }
 
   if (!hasRole(user, 'ADMIN') && !hasRole(user, 'FINANCE')) {
-    // Non-admin users are redirected to login (they shouldn't access admin)
-    redirect(ROUTES.LOGIN)
+    // Non-admin users are redirected to unauthorized (they shouldn't access admin)
+    redirect(ROUTES.UNAUTHORIZED)
   }
 
   return (

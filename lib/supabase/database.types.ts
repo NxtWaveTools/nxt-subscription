@@ -220,9 +220,32 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      department_analytics: {
+        Row: {
+          active_user_count: number | null
+          created_at: string | null
+          hod_count: number | null
+          id: string | null
+          is_active: boolean | null
+          name: string | null
+          poc_count: number | null
+          updated_at: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
+      get_department_stats: {
+        Args: never
+        Returns: {
+          active_users: number
+          department_id: string
+          department_name: string
+          hod_count: number
+          poc_count: number
+          total_users: number
+        }[]
+      }
       has_any_role: { Args: { role_names: string[] }; Returns: boolean }
       has_poc_access_to_department: {
         Args: { dept_id: string }

@@ -23,10 +23,10 @@ interface UsersFiltersProps {
   }
 }
 
-export function UsersFilters({ roles, departments, defaultValues }: UsersFiltersProps) {
+export function UsersFilters({ roles, defaultValues }: UsersFiltersProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const [isPending, startTransition] = useTransition()
+  const [_isPending, startTransition] = useTransition()
 
   const [filters, setFilters] = useState({
     search: defaultValues?.search || '',

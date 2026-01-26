@@ -7,11 +7,11 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import * as departmentActions from './departments'
 import * as authModule from '@/lib/auth/user'
 
-// Test UUIDs (RFC 4122 compliant)
-const TEST_DEPT_ID_1 = '00000000-0000-4000-8000-000000000001'
-const TEST_USER_ID_1 = '00000000-0000-4000-8000-000000000011'
-const TEST_USER_ID_2 = '00000000-0000-4000-8000-000000000012'
-const ADMIN_USER_ID = '00000000-0000-4000-8000-000000000099'
+// Test UUIDs (RFC 4122 compliant) - prefixed with _ to indicate available for future tests
+const _TEST_DEPT_ID_1 = '00000000-0000-4000-8000-000000000001'
+const _TEST_USER_ID_1 = '00000000-0000-4000-8000-000000000011'
+const _TEST_USER_ID_2 = '00000000-0000-4000-8000-000000000012'
+const _ADMIN_USER_ID = '00000000-0000-4000-8000-000000000099'
 
 // Mock dependencies
 vi.mock('@/lib/auth/user')
@@ -24,20 +24,33 @@ vi.mock('@/lib/supabase/server', () => ({
   createAdminClient: vi.fn(),
 }))
 
+// Mock type for chainable Supabase client methods
+type MockSupabaseClient = {
+  from: ReturnType<typeof vi.fn>
+  select: ReturnType<typeof vi.fn>
+  insert: ReturnType<typeof vi.fn>
+  update: ReturnType<typeof vi.fn>
+  delete: ReturnType<typeof vi.fn>
+  eq: ReturnType<typeof vi.fn>
+  neq: ReturnType<typeof vi.fn>
+  in: ReturnType<typeof vi.fn>
+  single: ReturnType<typeof vi.fn>
+  maybeSingle: ReturnType<typeof vi.fn>
+}
+
 // Create mock functions
-const createMockSupabase = () => {
-  const mock: any = {
-    from: vi.fn(() => mock),
-    select: vi.fn(() => mock),
-    insert: vi.fn(() => mock),
-    update: vi.fn(() => mock),
-    delete: vi.fn(() => mock),
-    eq: vi.fn(() => mock),
-    neq: vi.fn(() => mock),
-    in: vi.fn(() => mock),
-    single: vi.fn(() => mock),
-    maybeSingle: vi.fn(() => mock),
-  }
+const createMockSupabase = (): MockSupabaseClient => {
+  const mock: MockSupabaseClient = {} as MockSupabaseClient
+  mock.from = vi.fn(() => mock)
+  mock.select = vi.fn(() => mock)
+  mock.insert = vi.fn(() => mock)
+  mock.update = vi.fn(() => mock)
+  mock.delete = vi.fn(() => mock)
+  mock.eq = vi.fn(() => mock)
+  mock.neq = vi.fn(() => mock)
+  mock.in = vi.fn(() => mock)
+  mock.single = vi.fn(() => mock)
+  mock.maybeSingle = vi.fn(() => mock)
   return mock
 }
 
@@ -50,17 +63,18 @@ describe('Department Actions', () => {
     
     // Import and setup createClient mock
     const supabaseModule = await import('@/lib/supabase/server')
-    vi.mocked(supabaseModule.createClient).mockResolvedValue(mockSupabase as any)
+    vi.mocked(supabaseModule.createClient).mockResolvedValue(mockSupabase as unknown as Awaited<ReturnType<typeof supabaseModule.createClient>>)
     
     // Mock requireAdmin to pass by default
     vi.mocked(authModule.requireAdmin).mockResolvedValue({
       id: 'admin-user-id',
       email: 'admin@test.com',
+      name: 'Admin User',
       roles: ['ADMIN'],
       is_active: true,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
-    } as any)
+    } as Awaited<ReturnType<typeof authModule.requireAdmin>>)
   })
 
   afterEach(() => {

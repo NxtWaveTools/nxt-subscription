@@ -68,6 +68,6 @@ export async function GET(request: Request) {
     return NextResponse.redirect(`${origin}${ADMIN_ROUTES.ADMIN}`)
   }
 
-  // All other users go to admin dashboard (they'll be redirected if not authorized)
-  return NextResponse.redirect(`${origin}${ADMIN_ROUTES.ADMIN}`)
+  // Users without admin/finance role go to unauthorized page
+  return NextResponse.redirect(`${origin}${ROUTES.UNAUTHORIZED}`)
 }

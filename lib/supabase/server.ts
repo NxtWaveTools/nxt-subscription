@@ -41,10 +41,8 @@ export async function createClient() {
  */
 export function createAdminClient() {
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-  console.log('Creating admin client with service role key:', serviceRoleKey ? 'EXISTS' : 'MISSING')
   
   if (!serviceRoleKey) {
-    console.error('SUPABASE_SERVICE_ROLE_KEY is not set!')
     throw new Error('SUPABASE_SERVICE_ROLE_KEY is not configured')
   }
   

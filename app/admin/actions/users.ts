@@ -6,32 +6,15 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
-import { getCurrentUser, hasRole } from '@/lib/auth/user'
+import { requireAdmin } from '@/lib/auth/user'
 import { adminSchemas } from '@/lib/validation/schemas'
-import { ADMIN_ROUTES, BULK_BATCH_SIZE } from '@/lib/constants'
+import { ADMIN_ROUTES, BULK_BATCH_SIZE, ROLE_IDS } from '@/lib/constants'
 
 type ActionResponse<T = unknown> = {
   success: boolean
   error?: string
   data?: T
   warning?: string
-}
-
-/**
- * Check if current user has ADMIN or FINANCE role
- */
-async function requireAdmin() {
-  const user = await getCurrentUser()
-  
-  if (!user) {
-    throw new Error('Unauthorized: No user found')
-  }
-
-  if (!hasRole(user, 'ADMIN') && !hasRole(user, 'FINANCE')) {
-    throw new Error('Unauthorized: Admin or Finance role required')
-  }
-
-  return user
 }
 
 /**
@@ -132,7 +115,12 @@ export async function toggleUserActive(
 ): Promise<ActionResponse> {
   try {
     // Permission check
-    await requireAdmin()
+    const currentUser = await requireAdmin()
+
+    // Prevent self-deactivation
+    if (currentUser.id === userId && !isActive) {
+      return { success: false, error: 'You cannot deactivate your own account' }
+    }
 
     // Validate input
     const validation = adminSchemas.activateUser.safeParse({ user_id: userId, is_active: isActive })
@@ -175,7 +163,12 @@ export async function bulkToggleUsersActive(
 ): Promise<ActionResponse<{ processed: number; failed: number }>> {
   try {
     // Permission check
-    await requireAdmin()
+    const currentUser = await requireAdmin()
+
+    // Prevent self-deactivation in bulk operations
+    if (!isActive && userIds.includes(currentUser.id)) {
+      return { success: false, error: 'You cannot deactivate your own account' }
+    }
 
     // Validate input
     const validation = adminSchemas.bulkActivateUsers.safeParse({
@@ -231,7 +224,13 @@ export async function assignRoleToUser(
 ): Promise<ActionResponse> {
   try {
     // Permission check
-    await requireAdmin()
+    const currentUser = await requireAdmin()
+
+    // Prevent self-role-change to non-admin/finance roles (would lock out)
+    const isAdminOrFinanceRole = roleId === ROLE_IDS.ADMIN || roleId === ROLE_IDS.FINANCE
+    if (currentUser.id === userId && !isAdminOrFinanceRole) {
+      return { success: false, error: 'You cannot change your own role to a non-admin role' }
+    }
 
     // Validate input
     const validation = adminSchemas.assignRole.safeParse({ user_id: userId, role_id: roleId })
@@ -344,7 +343,13 @@ export async function bulkAssignRoleToUsers(
 ): Promise<ActionResponse<{ processed: number; failed: number; skipped: number }>> {
   try {
     // Permission check
-    await requireAdmin()
+    const currentUser = await requireAdmin()
+
+    // Prevent self-role-change to non-admin/finance roles in bulk operations
+    const isAdminOrFinanceRole = roleId === ROLE_IDS.ADMIN || roleId === ROLE_IDS.FINANCE
+    if (userIds.includes(currentUser.id) && !isAdminOrFinanceRole) {
+      return { success: false, error: 'You cannot change your own role to a non-admin role' }
+    }
 
     // Validate input
     const validation = adminSchemas.bulkAssignRole.safeParse({
@@ -442,7 +447,12 @@ export async function updateUserProfile(
 export async function deleteUser(userId: string): Promise<ActionResponse> {
   try {
     // Permission check
-    await requireAdmin()
+    const currentUser = await requireAdmin()
+
+    // Prevent self-deletion
+    if (currentUser.id === userId) {
+      return { success: false, error: 'You cannot delete your own account' }
+    }
 
     // Use admin client for auth.admin operations
     const adminClient = createAdminClient()

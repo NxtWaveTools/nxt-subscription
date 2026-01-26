@@ -26,28 +26,6 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              // Suppress hydration warnings for browser extension attributes
-              (function() {
-                const originalError = console.error;
-                console.error = function(...args) {
-                  if (
-                    typeof args[0] === 'string' &&
-                    (args[0].includes('rtrvr-') || 
-                     args[0].includes('Hydration') && args[0].includes('browser extension'))
-                  ) {
-                    return;
-                  }
-                  originalError.apply(console, args);
-                };
-              })();
-            `,
-          }}
-        />
-      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         suppressHydrationWarning

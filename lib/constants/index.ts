@@ -29,6 +29,7 @@ export const ROUTES = {
   HOME: '/',
   LOGIN: '/login',
   AUTH_CALLBACK: '/auth/callback',
+  UNAUTHORIZED: '/unauthorized',
 } as const
 
 // Admin routes

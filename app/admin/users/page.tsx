@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { UsersTable } from './components/users-table'
 import { UsersFilters } from './components/users-filters'
 import { CreateUserButton } from './components/create-user-button'
+import type { UserWithRoles } from '@/lib/types'
 
 interface UsersPageProps {
   searchParams: Promise<{
@@ -40,7 +41,7 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
     .select(
       `
       *,
-      user_roles(
+      user_roles!inner(
         role_id,
         roles(id, name)
       )
@@ -57,6 +58,11 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
   // Apply filters
   if (isActiveFilter !== undefined) {
     query = query.eq('is_active', isActiveFilter === 'true')
+  }
+
+  // Filter by role at database level (NOT in-memory per project guidelines)
+  if (roleId) {
+    query = query.eq('user_roles.role_id', roleId)
   }
 
   // Apply pagination
@@ -87,20 +93,13 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
     )
   }
 
-  // Filter by role if needed (client-side for now, can optimize with view later)
-  let filteredUsers = users || []
-  if (roleId) {
-    filteredUsers = filteredUsers.filter((user: any) =>
-      // user_roles is a single object (not array) due to one-to-one relationship
-      user.user_roles?.role_id === roleId
-    )
-  }
-
-  // user_roles is already a single object from Supabase (one-to-one relationship)
-  // No normalization needed - just ensure null safety
-  const normalizedUsers = filteredUsers.map((user: any) => ({
+  // Supabase returns user_roles as array, normalize to single object (one-to-one relationship)
+  const normalizedUsers: UserWithRoles[] = (users || []).map((user) => ({
     ...user,
-    user_roles: user.user_roles || null,
+    // Take first role from array (one-to-one relationship means max 1)
+    user_roles: Array.isArray(user.user_roles) && user.user_roles.length > 0 
+      ? user.user_roles[0] 
+      : null,
   }))
 
   const totalCount = count || 0
