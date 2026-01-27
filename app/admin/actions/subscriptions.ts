@@ -826,3 +826,114 @@ export async function deleteSubscription(
     }
   }
 }
+
+// ============================================================================
+// Auto-Cancel Operations
+// ============================================================================
+
+interface AutoCancelResult {
+  cancelled_count: number
+  notification_count: number
+  error_message: string | null
+}
+
+/**
+ * Manually trigger auto-cancel of overdue invoice payment cycles
+ * Admin-only operation
+ */
+export async function triggerAutoCancelOverdueInvoices(): Promise<ActionResponse<{
+  cancelledCount: number
+  notificationCount: number
+  errorMessage?: string
+}>> {
+  try {
+    const currentUser = await requireAdmin()
+    const supabase = await createClient()
+
+    // Call the database function to process overdue invoices
+    // Using raw SQL since the function isn't in generated types yet
+    const { data, error } = await supabase
+      .rpc('auto_cancel_overdue_invoices' as never)
+      .single<AutoCancelResult>()
+
+    if (error) {
+      console.error('Auto-cancel error:', error)
+      return {
+        success: false,
+        error: 'Failed to process overdue invoices: ' + error.message,
+      }
+    }
+
+    // Audit log
+    createAuditLog({
+      userId: currentUser.id,
+      action: AUDIT_ACTIONS.SYSTEM_AUTO_CANCEL_TRIGGER,
+      entityType: AUDIT_ENTITY_TYPES.SYSTEM,
+      entityId: 'auto-cancel',
+      changes: {
+        cancelled_count: data?.cancelled_count,
+        notification_count: data?.notification_count,
+        triggered_at: new Date().toISOString(),
+      },
+    }).catch(console.error)
+
+    revalidatePath('/admin/subscriptions')
+    revalidatePath('/finance')
+    revalidatePath('/poc')
+    revalidatePath('/hod')
+
+    return {
+      success: true,
+      data: {
+        cancelledCount: data?.cancelled_count || 0,
+        notificationCount: data?.notification_count || 0,
+        errorMessage: data?.error_message || undefined,
+      },
+    }
+  } catch (error) {
+    console.error('Trigger auto-cancel error:', error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'An error occurred',
+    }
+  }
+}
+
+/**
+ * Get count of overdue invoice payment cycles
+ * Admin-only operation
+ */
+export async function getOverdueInvoiceCount(): Promise<ActionResponse<number>> {
+  try {
+    await requireAdmin()
+    const supabase = await createClient()
+
+    const today = new Date().toISOString().split('T')[0]
+
+    const { count, error } = await supabase
+      .from('subscription_payments')
+      .select('*', { count: 'exact', head: true })
+      .eq('cycle_status', 'PAYMENT_RECORDED')
+      .is('invoice_file_id', null)
+      .lt('invoice_deadline', today)
+
+    if (error) {
+      console.error('Get overdue count error:', error)
+      return {
+        success: false,
+        error: 'Failed to get overdue count',
+      }
+    }
+
+    return {
+      success: true,
+      data: count || 0,
+    }
+  } catch (error) {
+    console.error('Get overdue count error:', error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'An error occurred',
+    }
+  }
+}

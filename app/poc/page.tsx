@@ -12,10 +12,19 @@ import {
   XCircle,
   AlertCircle,
   Building2,
+  FileText,
+  RefreshCcw,
 } from 'lucide-react'
 import { getCurrentUser } from '@/lib/auth/user'
 import { createClient } from '@/lib/supabase/server'
 import { PendingApprovalsList } from './components/pending-approvals-list'
+import { PendingRenewalsList } from './components/pending-renewals-list'
+import { PendingInvoicesList } from './components/pending-invoices-list'
+import {
+  fetchPendingApprovalsForPOC,
+  fetchPendingInvoiceUploadsForPOC,
+  fetchOverdueInvoices,
+} from '@/lib/data-access'
 
 export default async function POCDashboardPage() {
   const user = await getCurrentUser()
@@ -111,6 +120,13 @@ export default async function POCDashboardPage() {
 
   const departments = pocDepartments?.map((d) => d.departments).filter(Boolean) || []
 
+  // Fetch payment cycle data for POC
+  const [pendingRenewals, pendingInvoices, overdueInvoices] = await Promise.all([
+    fetchPendingApprovalsForPOC(departmentIds),
+    fetchPendingInvoiceUploadsForPOC(departmentIds),
+    fetchOverdueInvoices(departmentIds),
+  ])
+
   return (
     <div className="space-y-8">
       <div>
@@ -199,6 +215,101 @@ export default async function POCDashboardPage() {
           <PendingApprovalsList subscriptions={pendingSubscriptions || []} />
         </CardContent>
       </Card>
+
+      {/* Payment Cycles Section */}
+      <div className="space-y-6">
+        <h2 className="text-lg font-semibold flex items-center gap-2">
+          <RefreshCcw className="h-5 w-5" />
+          Payment Cycles
+        </h2>
+
+        {/* Payment Cycle Stats */}
+        <div className="grid gap-4 md:grid-cols-3">
+          <Card className={pendingRenewals.length > 0 ? 'border-blue-200 bg-blue-50/50 dark:bg-blue-950/10' : ''}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Pending Renewals</CardTitle>
+              <Clock className={`h-4 w-4 ${pendingRenewals.length > 0 ? 'text-blue-600' : 'text-muted-foreground'}`} />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{pendingRenewals.length}</div>
+              <p className="text-xs text-muted-foreground">Cycles needing approval</p>
+            </CardContent>
+          </Card>
+
+          <Card className={pendingInvoices.length > 0 ? 'border-purple-200 bg-purple-50/50 dark:bg-purple-950/10' : ''}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Pending Invoices</CardTitle>
+              <FileText className={`h-4 w-4 ${pendingInvoices.length > 0 ? 'text-purple-600' : 'text-muted-foreground'}`} />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{pendingInvoices.length}</div>
+              <p className="text-xs text-muted-foreground">Awaiting invoice upload</p>
+            </CardContent>
+          </Card>
+
+          <Card className={overdueInvoices.length > 0 ? 'border-red-200 bg-red-50/50 dark:bg-red-950/10' : ''}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Overdue Invoices</CardTitle>
+              <AlertCircle className={`h-4 w-4 ${overdueInvoices.length > 0 ? 'text-red-600' : 'text-muted-foreground'}`} />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{overdueInvoices.length}</div>
+              <p className="text-xs text-muted-foreground">Past deadline</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Overdue Invoices Alert */}
+        {overdueInvoices.length > 0 && (
+          <Card className="border-red-300 bg-red-50 dark:bg-red-950/20">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-red-800 dark:text-red-200">
+                <AlertCircle className="h-5 w-5" />
+                Urgent: {overdueInvoices.length} Overdue Invoice{overdueInvoices.length !== 1 ? 's' : ''}
+              </CardTitle>
+              <CardDescription className="text-red-700 dark:text-red-300">
+                These payment cycles have passed their invoice deadline. Upload invoices immediately to prevent automatic cancellation.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        )}
+
+        {/* Pending Renewals Section */}
+        {pendingRenewals.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Clock className="h-5 w-5" />
+                Pending Renewal Approvals
+              </CardTitle>
+              <CardDescription>
+                Review and approve these renewals before the cycle ends
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <PendingRenewalsList paymentCycles={pendingRenewals} />
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Pending Invoice Uploads Section */}
+        {pendingInvoices.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Pending Invoice Uploads
+              </CardTitle>
+              <CardDescription>
+                Upload invoices for these payment cycles
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <PendingInvoicesList paymentCycles={pendingInvoices} />
+            </CardContent>
+          </Card>
+        )}
+      </div>
     </div>
   )
 }

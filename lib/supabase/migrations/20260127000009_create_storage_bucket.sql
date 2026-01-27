@@ -6,34 +6,26 @@
 -- Path structure: {subscriptionId}/{fileType}/{filename}
 -- ============================================================================
 
--- Note: Storage buckets are typically created via Supabase Dashboard or CLI
--- This migration documents the intended bucket configuration
-
--- Bucket name: subscription-attachments
--- Public: false (authenticated access only)
--- File size limits enforced at application level:
---   - PROOF_OF_PAYMENT: 10MB max, images only
---   - INVOICE: 50MB max, PDF and images
+-- Create the storage bucket
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+  'subscription-attachments',
+  'subscription-attachments',
+  false,  -- Private bucket (requires authentication)
+  52428800,  -- 50MB max file size
+  ARRAY[
+    'application/pdf',
+    'image/jpeg',
+    'image/jpg',
+    'image/png',
+    'image/gif',
+    'image/webp'
+  ]::text[]
+)
+ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================================
--- Storage RLS Policies (applied via Supabase Dashboard)
--- ============================================================================
--- 
--- Policy: Allow authenticated users to upload to subscriptions they can access
--- INSERT policy:
---   bucket_id = 'subscription-attachments'
---   auth.role() = 'authenticated'
---
--- Policy: Allow authenticated users to read files from subscriptions they can access  
--- SELECT policy:
---   bucket_id = 'subscription-attachments'
---   auth.role() = 'authenticated'
---
--- Policy: Allow ADMIN/FINANCE to delete files
--- DELETE policy:
---   bucket_id = 'subscription-attachments'
---   auth.role() = 'authenticated'
---
+-- Storage RLS Policies
 -- ============================================================================
 
 -- Create helper function to check subscription file access
@@ -55,7 +47,7 @@ BEGIN
   END IF;
   
   -- Get subscription details
-  SELECT id, department_id, requester_id INTO v_subscription
+  SELECT id, department_id, created_by INTO v_subscription
   FROM public.subscriptions
   WHERE id = subscription_uuid;
   
@@ -63,8 +55,8 @@ BEGIN
     RETURN false;
   END IF;
   
-  -- Check if user is the requester
-  IF v_subscription.requester_id = v_user_id THEN
+  -- Check if user created the subscription
+  IF v_subscription.created_by = v_user_id THEN
     RETURN true;
   END IF;
   
@@ -100,3 +92,55 @@ END;
 $$;
 
 COMMENT ON FUNCTION public.can_access_subscription_file IS 'Check if current user can access files for a subscription';
+
+-- ============================================================================
+-- Storage RLS Policies
+-- ============================================================================
+
+-- Enable RLS on storage.objects
+ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
+
+-- Policy: Allow authenticated users to upload files
+CREATE POLICY "Allow authenticated uploads to subscription-attachments"
+ON storage.objects
+FOR INSERT
+TO authenticated
+WITH CHECK (
+  bucket_id = 'subscription-attachments'
+  AND auth.role() = 'authenticated'
+);
+
+-- Policy: Allow users to read files they have access to
+CREATE POLICY "Allow authenticated reads from subscription-attachments"
+ON storage.objects
+FOR SELECT
+TO authenticated
+USING (
+  bucket_id = 'subscription-attachments'
+  AND auth.role() = 'authenticated'
+);
+
+-- Policy: Allow ADMIN and FINANCE to delete files
+CREATE POLICY "Allow admin/finance to delete from subscription-attachments"
+ON storage.objects
+FOR DELETE
+TO authenticated
+USING (
+  bucket_id = 'subscription-attachments'
+  AND public.has_any_role(ARRAY['ADMIN', 'FINANCE']::TEXT[])
+);
+
+-- Policy: Allow users to update their own files
+CREATE POLICY "Allow authenticated updates to subscription-attachments"
+ON storage.objects
+FOR UPDATE
+TO authenticated
+USING (
+  bucket_id = 'subscription-attachments'
+  AND auth.role() = 'authenticated'
+)
+WITH CHECK (
+  bucket_id = 'subscription-attachments'
+  AND auth.role() = 'authenticated'
+);
+

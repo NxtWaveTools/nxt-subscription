@@ -7,6 +7,8 @@ export type Json =
   | Json[]
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "14.1"
   }
@@ -370,6 +372,107 @@ export type Database = {
           },
         ]
       }
+      subscription_payments: {
+        Row: {
+          accounting_status: string
+          created_at: string
+          cycle_end_date: string
+          cycle_number: number
+          cycle_start_date: string
+          cycle_status: Database["public"]["Enums"]["payment_cycle_status"]
+          id: string
+          invoice_deadline: string
+          invoice_file_id: string | null
+          invoice_uploaded_at: string | null
+          mandate_id: string | null
+          payment_recorded_at: string | null
+          payment_recorded_by: string | null
+          payment_status: Database["public"]["Enums"]["payment_status"]
+          payment_utr: string | null
+          poc_approval_status: string
+          poc_approved_at: string | null
+          poc_approved_by: string | null
+          poc_rejection_reason: string | null
+          subscription_id: string
+          updated_at: string
+        }
+        Insert: {
+          accounting_status?: string
+          created_at?: string
+          cycle_end_date: string
+          cycle_number?: number
+          cycle_start_date: string
+          cycle_status?: Database["public"]["Enums"]["payment_cycle_status"]
+          id?: string
+          invoice_deadline: string
+          invoice_file_id?: string | null
+          invoice_uploaded_at?: string | null
+          mandate_id?: string | null
+          payment_recorded_at?: string | null
+          payment_recorded_by?: string | null
+          payment_status?: Database["public"]["Enums"]["payment_status"]
+          payment_utr?: string | null
+          poc_approval_status?: string
+          poc_approved_at?: string | null
+          poc_approved_by?: string | null
+          poc_rejection_reason?: string | null
+          subscription_id: string
+          updated_at?: string
+        }
+        Update: {
+          accounting_status?: string
+          created_at?: string
+          cycle_end_date?: string
+          cycle_number?: number
+          cycle_start_date?: string
+          cycle_status?: Database["public"]["Enums"]["payment_cycle_status"]
+          id?: string
+          invoice_deadline?: string
+          invoice_file_id?: string | null
+          invoice_uploaded_at?: string | null
+          mandate_id?: string | null
+          payment_recorded_at?: string | null
+          payment_recorded_by?: string | null
+          payment_status?: Database["public"]["Enums"]["payment_status"]
+          payment_utr?: string | null
+          poc_approval_status?: string
+          poc_approved_at?: string | null
+          poc_approved_by?: string | null
+          poc_rejection_reason?: string | null
+          subscription_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscription_payments_invoice_file_id_fkey"
+            columns: ["invoice_file_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_files"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscription_payments_payment_recorded_by_fkey"
+            columns: ["payment_recorded_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscription_payments_poc_approved_by_fkey"
+            columns: ["poc_approved_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscription_payments_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "subscriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subscription_sequences: {
         Row: {
           created_at: string
@@ -467,7 +570,7 @@ export type Database = {
           start_date?: string | null
           status?: Database["public"]["Enums"]["subscription_status"]
           subscription_email?: string | null
-          subscription_id?: string
+          subscription_id: string
           tool_name: string
           updated_at?: string
           vendor_name: string
@@ -663,7 +766,7 @@ export type Database = {
         Returns: string
       }
       get_department_stats: {
-        Args: never
+        Args: Record<PropertyKey, never>
         Returns: {
           active_users: number
           department_id: string
@@ -674,14 +777,14 @@ export type Database = {
         }[]
       }
       get_role_distribution: {
-        Args: never
+        Args: Record<PropertyKey, never>
         Returns: {
           role_name: string
           user_count: number
         }[]
       }
       get_user_activity_stats: {
-        Args: never
+        Args: Record<PropertyKey, never>
         Returns: {
           active_percentage: number
           active_users: number
@@ -701,6 +804,15 @@ export type Database = {
     Enums: {
       approval_action: "APPROVED" | "REJECTED"
       billing_frequency: "MONTHLY" | "QUARTERLY" | "YEARLY" | "USAGE_BASED"
+      payment_cycle_status:
+        | "PENDING_PAYMENT"
+        | "PAYMENT_RECORDED"
+        | "PENDING_APPROVAL"
+        | "APPROVED"
+        | "REJECTED"
+        | "INVOICE_UPLOADED"
+        | "COMPLETED"
+        | "CANCELLED"
       payment_status: "PAID" | "IN_PROGRESS" | "DECLINED"
       subscription_status:
         | "PENDING"
@@ -837,6 +949,16 @@ export const Constants = {
     Enums: {
       approval_action: ["APPROVED", "REJECTED"],
       billing_frequency: ["MONTHLY", "QUARTERLY", "YEARLY", "USAGE_BASED"],
+      payment_cycle_status: [
+        "PENDING_PAYMENT",
+        "PAYMENT_RECORDED",
+        "PENDING_APPROVAL",
+        "APPROVED",
+        "REJECTED",
+        "INVOICE_UPLOADED",
+        "COMPLETED",
+        "CANCELLED",
+      ],
       payment_status: ["PAID", "IN_PROGRESS", "DECLINED"],
       subscription_status: [
         "PENDING",

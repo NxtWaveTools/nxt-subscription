@@ -15,6 +15,8 @@ import {
   CURRENCIES,
   FILE_TYPES,
   APPROVAL_ACTIONS,
+  PAYMENT_CYCLE_STATUS,
+  POC_APPROVAL_STATUS,
 } from '@/lib/constants'
 
 // Extract role names from ROLES constant for type-safe enum
@@ -600,6 +602,115 @@ export const notificationSchemas = {
    */
   markRead: z.object({
     notification_ids: z.array(z.string().uuid()).min(1).max(100),
+  }),
+}
+
+// ============================================================================
+// Payment Cycle Validation Schemas
+// ============================================================================
+
+const paymentCycleStatusValues = [
+  PAYMENT_CYCLE_STATUS.PENDING_PAYMENT,
+  PAYMENT_CYCLE_STATUS.PAYMENT_RECORDED,
+  PAYMENT_CYCLE_STATUS.PENDING_APPROVAL,
+  PAYMENT_CYCLE_STATUS.APPROVED,
+  PAYMENT_CYCLE_STATUS.REJECTED,
+  PAYMENT_CYCLE_STATUS.INVOICE_UPLOADED,
+  PAYMENT_CYCLE_STATUS.COMPLETED,
+  PAYMENT_CYCLE_STATUS.CANCELLED,
+] as const
+
+const pocApprovalStatusValues = [
+  POC_APPROVAL_STATUS.PENDING,
+  POC_APPROVAL_STATUS.APPROVED,
+  POC_APPROVAL_STATUS.REJECTED,
+] as const
+
+export const paymentCycleSchemas = {
+  /**
+   * Record payment schema (Finance team)
+   */
+  recordPayment: z.object({
+    payment_utr: z.string().min(1, 'Payment UTR is required').max(100, 'Payment UTR is too long'),
+    payment_status: z.enum(paymentStatusValues, {
+      message: 'Invalid payment status',
+    }),
+    accounting_status: z.enum(accountingStatusValues, {
+      message: 'Invalid accounting status',
+    }),
+    mandate_id: z.string().max(100, 'Mandate ID is too long').optional().nullable(),
+  }),
+
+  /**
+   * Create payment cycle schema (Finance team)
+   */
+  createCycle: z.object({
+    subscription_id: z.string().uuid('Invalid subscription ID'),
+    cycle_start_date: z.coerce.date({
+      message: 'Invalid cycle start date',
+    }),
+    cycle_end_date: z.coerce.date({
+      message: 'Invalid cycle end date',
+    }),
+  }).refine(
+    (data) => data.cycle_end_date > data.cycle_start_date,
+    {
+      message: 'Cycle end date must be after start date',
+      path: ['cycle_end_date'],
+    }
+  ),
+
+  /**
+   * Approve renewal schema (POC)
+   */
+  approveRenewal: z.object({
+    comments: z.string().max(500, 'Comments too long').optional().nullable(),
+  }),
+
+  /**
+   * Reject renewal schema (POC - reason required)
+   */
+  rejectRenewal: z.object({
+    reason: z.string()
+      .min(10, 'Please provide a reason for rejection (min 10 characters)')
+      .max(500, 'Reason is too long'),
+  }),
+
+  /**
+   * Upload invoice schema (POC)
+   */
+  uploadInvoice: z.object({
+    file_id: z.string().uuid('Invalid file ID'),
+  }),
+
+  /**
+   * Update payment status schema (Finance)
+   */
+  updatePaymentStatus: z.object({
+    payment_status: z.enum(paymentStatusValues, {
+      message: 'Invalid payment status',
+    }),
+    accounting_status: z.enum(accountingStatusValues, {
+      message: 'Invalid accounting status',
+    }).optional(),
+  }),
+
+  /**
+   * Payment cycle ID validation
+   */
+  paymentCycleId: z.string().uuid('Invalid payment cycle ID'),
+
+  /**
+   * Filter payment cycles schema
+   */
+  filter: z.object({
+    subscription_id: z.string().uuid().optional(),
+    cycle_status: z.enum(paymentCycleStatusValues).optional(),
+    payment_status: z.enum(paymentStatusValues).optional(),
+    poc_approval_status: z.enum(pocApprovalStatusValues).optional(),
+    accounting_status: z.enum(accountingStatusValues).optional(),
+    invoice_deadline_before: z.coerce.date().optional(),
+    invoice_deadline_after: z.coerce.date().optional(),
   }),
 }
 

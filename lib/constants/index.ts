@@ -193,11 +193,43 @@ export const FILE_SIZE_LIMITS = {
   INVOICE: 50 * 1024 * 1024,          // 50MB
 } as const
 
+// ============================================================================
+// Payment Cycle Constants
+// ============================================================================
+
+// Payment cycle status (tracks each billing cycle)
+export const PAYMENT_CYCLE_STATUS = {
+  PENDING_PAYMENT: 'PENDING_PAYMENT',       // Waiting for Finance to record payment
+  PAYMENT_RECORDED: 'PAYMENT_RECORDED',     // Finance recorded, waiting for POC invoice
+  PENDING_APPROVAL: 'PENDING_APPROVAL',     // Awaiting POC approval for next renewal
+  APPROVED: 'APPROVED',                     // POC approved renewal
+  REJECTED: 'REJECTED',                     // POC rejected renewal
+  INVOICE_UPLOADED: 'INVOICE_UPLOADED',     // POC uploaded invoice
+  COMPLETED: 'COMPLETED',                   // Cycle complete (payment + invoice done)
+  CANCELLED: 'CANCELLED',                   // Cancelled due to missing invoice
+} as const
+
+export type PaymentCycleStatus = typeof PAYMENT_CYCLE_STATUS[keyof typeof PAYMENT_CYCLE_STATUS]
+
+// POC approval status for renewal
+export const POC_APPROVAL_STATUS = {
+  PENDING: 'PENDING',
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED',
+} as const
+
+export type PocApprovalStatus = typeof POC_APPROVAL_STATUS[keyof typeof POC_APPROVAL_STATUS]
+
+// Days before renewal to send reminder
+export const RENEWAL_REMINDER_DAYS = 10 as const
+
 // Notification types
 export const NOTIFICATION_TYPES = {
   APPROVAL_REQUEST: 'APPROVAL_REQUEST',
   APPROVAL_DECISION: 'APPROVAL_DECISION',
   PAYMENT_UPDATE: 'PAYMENT_UPDATE',
+  RENEWAL_REMINDER: 'RENEWAL_REMINDER',
+  INVOICE_OVERDUE: 'INVOICE_OVERDUE',
   GENERAL: 'GENERAL',
 } as const
 

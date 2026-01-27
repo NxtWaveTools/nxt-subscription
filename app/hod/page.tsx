@@ -14,9 +14,32 @@ import {
   Building2,
   CreditCard,
   Calendar,
+  RefreshCw,
+  DollarSign,
+  FileText,
 } from 'lucide-react'
 import { getCurrentUser } from '@/lib/auth/user'
 import { createClient } from '@/lib/supabase/server'
+import {
+  fetchPaymentCyclesForDepartments,
+  getPaymentCycleCountsForDepartments,
+} from '@/lib/data-access'
+import type { SubscriptionPaymentWithRelations } from '@/lib/types'
+
+// Extended type for payment cycles with subscription data from join
+type PaymentCycleWithSubscription = SubscriptionPaymentWithRelations & {
+  subscriptions: {
+    id: string
+    subscription_id: string
+    tool_name: string
+    vendor_name: string
+    department_id: string
+    amount: number
+    currency: string
+    billing_frequency: string
+    departments: { id: string; name: string } | null
+  }
+}
 
 export default async function HODDashboardPage() {
   const user = await getCurrentUser()
@@ -88,6 +111,10 @@ export default async function HODDashboardPage() {
     .order('created_at', { ascending: false })
     .limit(20)
 
+  // Fetch payment cycles for HOD's departments
+  const paymentCycles = await fetchPaymentCyclesForDepartments(departmentIds, 10)
+  const paymentCycleCounts = await getPaymentCycleCountsForDepartments(departmentIds)
+
   // Calculate status counts
   const statusCounts = {
     PENDING: 0,
@@ -141,11 +168,35 @@ export default async function HODDashboardPage() {
     }
   }
 
+  const getCycleStatusBadgeVariant = (status: string): 'default' | 'secondary' | 'destructive' | 'outline' => {
+    switch (status) {
+      case 'COMPLETED': return 'default'
+      case 'APPROVED':
+      case 'INVOICE_UPLOADED': return 'default'
+      case 'PENDING_PAYMENT':
+      case 'PENDING_APPROVAL': return 'secondary'
+      case 'CANCELLED':
+      case 'REJECTED': return 'destructive'
+      default: return 'outline'
+    }
+  }
+
   const statusLabels: Record<string, string> = {
     PENDING: 'Pending',
     ACTIVE: 'Active',
     REJECTED: 'Rejected',
     EXPIRED: 'Expired',
+    CANCELLED: 'Cancelled',
+  }
+
+  const cycleStatusLabels: Record<string, string> = {
+    PENDING_PAYMENT: 'Pending Payment',
+    PAYMENT_RECORDED: 'Payment Recorded',
+    PENDING_APPROVAL: 'Pending Approval',
+    APPROVED: 'Approved',
+    REJECTED: 'Rejected',
+    INVOICE_UPLOADED: 'Invoice Uploaded',
+    COMPLETED: 'Completed',
     CANCELLED: 'Cancelled',
   }
 
@@ -157,6 +208,12 @@ export default async function HODDashboardPage() {
   }
 
   const departments = hodDepartments?.map((d) => d.departments).filter(Boolean) || []
+
+  // Calculate total payment cycles
+  const totalCycles = Object.values(paymentCycleCounts).reduce((sum, count) => sum + count, 0)
+  const activeCycles = paymentCycleCounts.PENDING_PAYMENT + 
+    paymentCycleCounts.PAYMENT_RECORDED + 
+    paymentCycleCounts.PENDING_APPROVAL
 
   return (
     <div className="space-y-8">
@@ -296,6 +353,125 @@ export default async function HODDashboardPage() {
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Payment Cycles Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <RefreshCw className="h-5 w-5" />
+            Payment Cycles
+          </CardTitle>
+          <CardDescription>
+            Recent billing cycles for your department subscriptions (view only)
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {/* Payment Cycle Stats */}
+          <div className="grid gap-4 md:grid-cols-4 mb-6">
+            <div className="rounded-lg border p-3">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <RefreshCw className="h-4 w-4" />
+                <span>Total Cycles</span>
+              </div>
+              <div className="text-2xl font-bold mt-1">{totalCycles}</div>
+            </div>
+            <div className="rounded-lg border p-3 border-blue-200 bg-blue-50/50 dark:bg-blue-950/10">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Clock className="h-4 w-4 text-blue-600" />
+                <span>In Progress</span>
+              </div>
+              <div className="text-2xl font-bold mt-1">{activeCycles}</div>
+            </div>
+            <div className="rounded-lg border p-3 border-green-200 bg-green-50/50 dark:bg-green-950/10">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <CheckCircle2 className="h-4 w-4 text-green-600" />
+                <span>Completed</span>
+              </div>
+              <div className="text-2xl font-bold mt-1">{paymentCycleCounts.COMPLETED}</div>
+            </div>
+            <div className="rounded-lg border p-3 border-red-200 bg-red-50/50 dark:bg-red-950/10">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <XCircle className="h-4 w-4 text-red-600" />
+                <span>Cancelled</span>
+              </div>
+              <div className="text-2xl font-bold mt-1">{paymentCycleCounts.CANCELLED}</div>
+            </div>
+          </div>
+
+          {/* Recent Payment Cycles List */}
+          {paymentCycles.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <RefreshCw className="h-12 w-12 text-muted-foreground mb-4" />
+              <p className="text-lg font-medium">No Payment Cycles Yet</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                No billing cycles have been created for your department subscriptions.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <h4 className="text-sm font-medium text-muted-foreground">Recent Cycles</h4>
+              {(paymentCycles as PaymentCycleWithSubscription[]).map((cycle) => {
+                const subscription = cycle.subscriptions
+                
+                return (
+                  <div
+                    key={cycle.id}
+                    className="flex items-center justify-between p-4 border rounded-lg"
+                  >
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <RefreshCw className="h-4 w-4 text-muted-foreground" />
+                        <span className="font-medium">
+                          {subscription?.tool_name || 'Unknown'} - Cycle #{cycle.cycle_number}
+                        </span>
+                        <Badge variant={getCycleStatusBadgeVariant(cycle.cycle_status)}>
+                          {cycleStatusLabels[cycle.cycle_status] || cycle.cycle_status}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
+                        <span>{subscription?.vendor_name || 'Unknown vendor'}</span>
+                        {subscription?.departments?.name && (
+                          <>
+                            <span>•</span>
+                            <span className="flex items-center gap-1">
+                              <Building2 className="h-3 w-3" />
+                              {subscription.departments.name}
+                            </span>
+                          </>
+                        )}
+                        <span>•</span>
+                        <span className="flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
+                          {formatDate(cycle.cycle_start_date)} - {formatDate(cycle.cycle_end_date)}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="text-right">
+                      {cycle.payment_status === 'PAID' && subscription ? (
+                        <div className="flex items-center gap-1 font-medium">
+                          <DollarSign className="h-4 w-4 text-green-600" />
+                          {formatCurrency(subscription.amount, subscription.currency || 'INR')}
+                        </div>
+                      ) : (
+                        <div className="text-sm text-muted-foreground">
+                          {cycle.payment_status === 'IN_PROGRESS' ? 'Processing' : 'Not recorded'}
+                        </div>
+                      )}
+                      {cycle.invoice_file_id && (
+                        <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
+                          <FileText className="h-3 w-3" />
+                          Invoice uploaded
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           )}
         </CardContent>

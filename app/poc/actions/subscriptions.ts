@@ -7,7 +7,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
-import { getCurrentUser, hasRole } from '@/lib/auth/user'
+import { requirePOCForDepartment } from '@/lib/auth/permissions'
 import { subscriptionSchemas } from '@/lib/validation/schemas'
 import {
   SUBSCRIPTION_STATUS,
@@ -25,36 +25,6 @@ type ActionResponse<T = unknown> = {
   success: boolean
   error?: string
   data?: T
-}
-
-// ============================================================================
-// Permission Helper
-// ============================================================================
-
-async function requirePOCForDepartment(departmentId: string) {
-  const user = await getCurrentUser()
-  if (!user) {
-    throw new Error('Authentication required')
-  }
-
-  if (!hasRole(user, 'POC')) {
-    throw new Error('Only POC can approve or reject subscriptions')
-  }
-
-  // Check if POC has access to this department
-  const supabase = await createClient()
-  const { data: pocAccess } = await supabase
-    .from('poc_department_access')
-    .select('department_id')
-    .eq('poc_id', user.id)
-    .eq('department_id', departmentId)
-    .maybeSingle()
-
-  if (!pocAccess) {
-    throw new Error('You are not the POC for this department')
-  }
-
-  return user
 }
 
 // ============================================================================

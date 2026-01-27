@@ -338,6 +338,115 @@ export interface SubscriptionApprovalWithApprover extends SubscriptionApproval {
 }
 
 // ============================================================================
+// Subscription Payment Types (Payment Cycles)
+// ============================================================================
+
+export type PaymentCycleStatus =
+  | 'PENDING_PAYMENT'     // Waiting for Finance to record payment
+  | 'PAYMENT_RECORDED'    // Finance has recorded payment, waiting for POC invoice
+  | 'PENDING_APPROVAL'    // Awaiting POC approval for next renewal
+  | 'APPROVED'            // POC approved renewal
+  | 'REJECTED'            // POC rejected renewal
+  | 'INVOICE_UPLOADED'    // POC uploaded invoice
+  | 'COMPLETED'           // Cycle complete
+  | 'CANCELLED'           // Cancelled due to missing invoice
+
+export type PocApprovalStatus = 'PENDING' | 'APPROVED' | 'REJECTED'
+
+/**
+ * Subscription payment cycle record
+ */
+export interface SubscriptionPayment {
+  id: string
+  subscription_id: string
+
+  // Payment cycle period
+  cycle_number: number
+  cycle_start_date: string
+  cycle_end_date: string
+
+  // Finance records payment
+  payment_utr: string | null
+  payment_status: 'PAID' | 'IN_PROGRESS' | 'DECLINED'
+  accounting_status: 'PENDING' | 'DONE'
+  mandate_id: string | null
+  payment_recorded_by: string | null
+  payment_recorded_at: string | null
+
+  // POC approval for renewal
+  poc_approval_status: PocApprovalStatus
+  poc_approved_by: string | null
+  poc_approved_at: string | null
+  poc_rejection_reason: string | null
+
+  // POC invoice upload
+  invoice_file_id: string | null
+  invoice_uploaded_at: string | null
+  invoice_deadline: string
+
+  // Cycle status
+  cycle_status: PaymentCycleStatus
+
+  // Timestamps
+  created_at: string
+  updated_at: string
+}
+
+/**
+ * Subscription payment insert type
+ */
+export interface SubscriptionPaymentInsert {
+  subscription_id: string
+  cycle_number?: number
+  cycle_start_date: string
+  cycle_end_date: string
+  payment_utr?: string | null
+  payment_status?: 'PAID' | 'IN_PROGRESS' | 'DECLINED'
+  accounting_status?: 'PENDING' | 'DONE'
+  mandate_id?: string | null
+  payment_recorded_by?: string | null
+  payment_recorded_at?: string | null
+  poc_approval_status?: PocApprovalStatus
+  invoice_deadline: string
+  cycle_status?: PaymentCycleStatus
+}
+
+/**
+ * Subscription payment update type
+ */
+export interface SubscriptionPaymentUpdate {
+  payment_utr?: string | null
+  payment_status?: 'PAID' | 'IN_PROGRESS' | 'DECLINED'
+  accounting_status?: 'PENDING' | 'DONE'
+  mandate_id?: string | null
+  payment_recorded_by?: string | null
+  payment_recorded_at?: string | null
+  poc_approval_status?: PocApprovalStatus
+  poc_approved_by?: string | null
+  poc_approved_at?: string | null
+  poc_rejection_reason?: string | null
+  invoice_file_id?: string | null
+  invoice_uploaded_at?: string | null
+  cycle_status?: PaymentCycleStatus
+}
+
+/**
+ * Subscription payment with related data
+ */
+export interface SubscriptionPaymentWithRelations extends SubscriptionPayment {
+  invoice_file: SubscriptionFile | null
+  payment_recorder: SimpleUser | null
+  poc_approver: SimpleUser | null
+}
+
+/**
+ * Subscription with payments for detail view
+ */
+export interface SubscriptionWithPayments extends SubscriptionFullDetails {
+  subscription_payments: SubscriptionPaymentWithRelations[]
+}
+
+// ============================================================================
 // Notification Types
 // ============================================================================
 

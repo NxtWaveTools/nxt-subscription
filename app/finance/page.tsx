@@ -15,15 +15,32 @@ import {
   XCircle,
   AlertCircle,
   ArrowRight,
+  RefreshCcw,
+  FileText,
 } from 'lucide-react'
 import { FINANCE_ROUTES } from '@/lib/constants'
-import { getSubscriptionCountsByStatus, fetchSubscriptions } from '@/lib/data-access'
+import {
+  getSubscriptionCountsByStatus,
+  fetchSubscriptions,
+  getPaymentCycleCountsByStatus,
+  getPaymentsPendingFinanceAction,
+  getRecentPaymentCycles,
+} from '@/lib/data-access'
 
 export default async function FinanceDashboardPage() {
   // Fetch dashboard data
-  const [statusCounts, { subscriptions: recentSubscriptions }] = await Promise.all([
+  const [
+    statusCounts,
+    { subscriptions: recentSubscriptions },
+    paymentCycleCounts,
+    pendingPayments,
+    recentCycles,
+  ] = await Promise.all([
     getSubscriptionCountsByStatus(),
     fetchSubscriptions({}, { page: 1, limit: 5, offset: 0 }),
+    getPaymentCycleCountsByStatus(),
+    getPaymentsPendingFinanceAction(),
+    getRecentPaymentCycles(5),
   ])
 
   const totalSubscriptions =
@@ -32,6 +49,16 @@ export default async function FinanceDashboardPage() {
     statusCounts.REJECTED +
     statusCounts.EXPIRED +
     statusCounts.CANCELLED
+
+  const totalPaymentCycles =
+    paymentCycleCounts.PENDING_PAYMENT +
+    paymentCycleCounts.PAYMENT_RECORDED +
+    paymentCycleCounts.PENDING_APPROVAL +
+    paymentCycleCounts.APPROVED +
+    paymentCycleCounts.REJECTED +
+    paymentCycleCounts.INVOICE_UPLOADED +
+    paymentCycleCounts.COMPLETED +
+    paymentCycleCounts.CANCELLED
 
   return (
     <div className="space-y-8">
@@ -107,6 +134,123 @@ export default async function FinanceDashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Payment Cycles Action Required */}
+      {pendingPayments > 0 && (
+        <Card className="border-orange-200 bg-orange-50/50 dark:bg-orange-950/10">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-orange-800 dark:text-orange-200">
+              <AlertCircle className="h-5 w-5" />
+              Action Required: {pendingPayments} Payment{pendingPayments !== 1 ? 's' : ''} Pending
+            </CardTitle>
+            <CardDescription className="text-orange-700 dark:text-orange-300">
+              These payment cycles are waiting for you to record payment details.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      )}
+
+      {/* Payment Cycles Stats */}
+      <div>
+        <h2 className="text-lg font-semibold mb-4">Payment Cycles Overview</h2>
+        <div className="grid gap-4 md:grid-cols-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Cycles</CardTitle>
+              <RefreshCcw className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{totalPaymentCycles}</div>
+              <p className="text-xs text-muted-foreground">All payment cycles</p>
+            </CardContent>
+          </Card>
+
+          <Card className="border-blue-200 bg-blue-50/50 dark:bg-blue-950/10">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Pending Payment</CardTitle>
+              <Clock className="h-4 w-4 text-blue-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{paymentCycleCounts.PENDING_PAYMENT}</div>
+              <p className="text-xs text-muted-foreground">Awaiting payment recording</p>
+            </CardContent>
+          </Card>
+
+          <Card className="border-purple-200 bg-purple-50/50 dark:bg-purple-950/10">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Awaiting POC</CardTitle>
+              <FileText className="h-4 w-4 text-purple-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {paymentCycleCounts.PAYMENT_RECORDED + paymentCycleCounts.PENDING_APPROVAL}
+              </div>
+              <p className="text-xs text-muted-foreground">Approval/invoice pending</p>
+            </CardContent>
+          </Card>
+
+          <Card className="border-green-200 bg-green-50/50 dark:bg-green-950/10">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Completed</CardTitle>
+              <CheckCircle2 className="h-4 w-4 text-green-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{paymentCycleCounts.COMPLETED}</div>
+              <p className="text-xs text-muted-foreground">Successfully completed</p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {/* Recent Payment Cycles */}
+      {recentCycles.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent Payment Cycles</CardTitle>
+            <CardDescription>Latest billing cycle activities</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {recentCycles.map((cycle) => (
+                <div
+                  key={cycle.id}
+                  className="flex items-center justify-between p-3 border rounded-lg text-sm"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center font-medium">
+                      {cycle.cycle_number}
+                    </div>
+                    <div>
+                      <p className="font-medium">Cycle #{cycle.cycle_number}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(cycle.cycle_start_date).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                        })} — {new Date(cycle.cycle_end_date).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                        })}
+                      </p>
+                    </div>
+                  </div>
+                  <Badge
+                    variant={
+                      cycle.cycle_status === 'COMPLETED'
+                        ? 'default'
+                        : cycle.cycle_status === 'CANCELLED'
+                        ? 'destructive'
+                        : 'secondary'
+                    }
+                  >
+                    {cycle.cycle_status.replace(/_/g, ' ')}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Recent Subscriptions */}
       <Card>

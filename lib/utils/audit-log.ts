@@ -64,6 +64,19 @@ export const AUDIT_ACTIONS = {
   // File actions
   FILE_UPLOAD: 'file.upload',
   FILE_DELETE: 'file.delete',
+  
+  // Payment cycle actions
+  PAYMENT_CYCLE_CREATE: 'payment_cycle.create',
+  PAYMENT_RECORD: 'payment_cycle.payment.record',
+  PAYMENT_UPDATE: 'payment_cycle.payment.update',
+  PAYMENT_CYCLE_CANCEL: 'payment_cycle.cancel',
+  RENEWAL_APPROVE: 'payment_cycle.renewal.approve',
+  RENEWAL_REJECT: 'payment_cycle.renewal.reject',
+  INVOICE_UPLOAD: 'payment_cycle.invoice.upload',
+  PAYMENT_CYCLE_AUTO_CANCEL: 'payment_cycle.auto_cancel',
+  
+  // System actions
+  SYSTEM_AUTO_CANCEL_TRIGGER: 'system.auto_cancel.trigger',
 } as const
 
 export type AuditAction = typeof AUDIT_ACTIONS[keyof typeof AUDIT_ACTIONS]
@@ -82,6 +95,8 @@ export const AUDIT_ENTITY_TYPES = {
   LOCATION: 'location',
   SUBSCRIPTION_FILE: 'subscription_file',
   SUBSCRIPTION_APPROVAL: 'subscription_approval',
+  PAYMENT_CYCLE: 'payment_cycle',
+  SYSTEM: 'system',
 } as const
 
 export type AuditEntityType = typeof AUDIT_ENTITY_TYPES[keyof typeof AUDIT_ENTITY_TYPES]
