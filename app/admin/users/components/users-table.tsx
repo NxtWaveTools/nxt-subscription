@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { DataTable } from '@/components/ui/data-table'
 import { ManageRolesDialog } from './manage-roles-dialog'
-import { deleteUser } from '../../actions/users'
+import { deleteUser, toggleUserActive } from '../../actions/users'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
@@ -24,7 +24,9 @@ export function UsersTable({ users, roles }: UsersTableProps) {
   const router = useRouter()
   const [selectedUser, setSelectedUser] = useState<UserWithRoles | null>(null)
   const [userToDelete, setUserToDelete] = useState<UserWithRoles | null>(null)
+  const [userToToggle, setUserToToggle] = useState<UserWithRoles | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [isToggling, setIsToggling] = useState(false)
   const [manageRolesOpen, setManageRolesOpen] = useState(false)
 
   const handleDelete = async () => {
@@ -42,6 +44,24 @@ export function UsersTable({ users, roles }: UsersTableProps) {
 
     setIsDeleting(false)
     setUserToDelete(null)
+  }
+
+  const handleToggleActive = async () => {
+    if (!userToToggle) return
+
+    setIsToggling(true)
+    const newStatus = !userToToggle.is_active
+    const result = await toggleUserActive(userToToggle.id, newStatus)
+
+    if (result.error) {
+      toast.error(result.error)
+    } else {
+      toast.success(`User ${newStatus ? 'activated' : 'deactivated'} successfully`)
+      router.refresh()
+    }
+
+    setIsToggling(false)
+    setUserToToggle(null)
   }
 
   const columns = [
@@ -99,6 +119,13 @@ export function UsersTable({ users, roles }: UsersTableProps) {
               Manage Role
             </Button>
             <Button
+              variant={user.is_active ? 'secondary' : 'default'}
+              size="sm"
+              onClick={() => setUserToToggle(user)}
+            >
+              {user.is_active ? 'Deactivate' : 'Activate'}
+            </Button>
+            <Button
               variant="destructive"
               size="sm"
               onClick={() => setUserToDelete(user)}
@@ -134,6 +161,19 @@ export function UsersTable({ users, roles }: UsersTableProps) {
         description={`Are you sure you want to delete ${userToDelete?.email}? This action cannot be undone.`}
         onConfirm={handleDelete}
         loading={isDeleting}
+      />
+
+      <ConfirmDialog
+        open={!!userToToggle}
+        onOpenChange={(open) => !open && setUserToToggle(null)}
+        title={userToToggle?.is_active ? 'Deactivate User' : 'Activate User'}
+        description={
+          userToToggle?.is_active
+            ? `Are you sure you want to deactivate ${userToToggle?.email}? They will no longer be able to access the system.`
+            : `Are you sure you want to activate ${userToToggle?.email}? They will be able to access the system.`
+        }
+        onConfirm={handleToggleActive}
+        loading={isToggling}
       />
     </>
   )
