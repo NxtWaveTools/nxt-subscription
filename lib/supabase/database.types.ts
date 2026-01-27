@@ -14,6 +14,50 @@ export type Database = {
   }
   public: {
     Tables: {
+      audit_log: {
+        Row: {
+          action: string
+          changes: Json | null
+          created_at: string
+          entity_id: string | null
+          entity_type: string
+          id: string
+          ip_address: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          changes?: Json | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type: string
+          id?: string
+          ip_address?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          changes?: Json | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string
+          id?: string
+          ip_address?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_log_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       departments: {
         Row: {
           created_at: string
@@ -55,6 +99,13 @@ export type Database = {
           hod_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "hod_departments_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "department_analytics"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "hod_departments_department_id_fkey"
             columns: ["department_id"]
@@ -121,6 +172,13 @@ export type Database = {
           poc_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "poc_department_access_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "department_analytics"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "poc_department_access_department_id_fkey"
             columns: ["department_id"]
@@ -235,6 +293,18 @@ export type Database = {
       }
     }
     Functions: {
+      create_audit_log: {
+        Args: {
+          p_action: string
+          p_changes?: Json
+          p_entity_id?: string
+          p_entity_type: string
+          p_ip_address?: string
+          p_user_agent?: string
+          p_user_id: string
+        }
+        Returns: string
+      }
       get_department_stats: {
         Args: never
         Returns: {
@@ -243,6 +313,22 @@ export type Database = {
           department_name: string
           hod_count: number
           poc_count: number
+          total_users: number
+        }[]
+      }
+      get_role_distribution: {
+        Args: never
+        Returns: {
+          role_name: string
+          user_count: number
+        }[]
+      }
+      get_user_activity_stats: {
+        Args: never
+        Returns: {
+          active_percentage: number
+          active_users: number
+          inactive_users: number
           total_users: number
         }[]
       }

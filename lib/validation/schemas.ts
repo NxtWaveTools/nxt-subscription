@@ -3,6 +3,10 @@
 // ============================================================================
 
 import { z } from 'zod'
+import { ROLES, PAGINATION } from '@/lib/constants'
+
+// Extract role names from ROLES constant for type-safe enum
+const roleNames = [ROLES.ADMIN, ROLES.FINANCE, ROLES.HOD, ROLES.POC] as const
 
 /**
  * User validation schemas
@@ -53,9 +57,9 @@ export const departmentSchemas = {
  */
 export const roleSchemas = {
   /**
-   * Role name validation
+   * Role name validation - uses ROLES constant for single source of truth
    */
-  roleName: z.enum(['ADMIN', 'FINANCE', 'HOD', 'POC'], {
+  roleName: z.enum(roleNames, {
     message: 'Invalid role name',
   }),
 
@@ -67,6 +71,14 @@ export const roleSchemas = {
     role_id: z.string().uuid('Invalid role ID'),
   }),
 }
+
+/**
+ * Pagination validation schema
+ */
+export const paginationSchema = z.object({
+  page: z.coerce.number().int().min(1).default(PAGINATION.DEFAULT_PAGE),
+  limit: z.coerce.number().int().min(PAGINATION.MIN_LIMIT).max(PAGINATION.MAX_LIMIT).default(PAGINATION.DEFAULT_LIMIT),
+})
 
 /**
  * Admin operation validation schemas

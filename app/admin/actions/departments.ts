@@ -10,6 +10,7 @@ import { createClient } from '@/lib/supabase/server'
 import { requireAdmin } from '@/lib/auth/user'
 import { adminSchemas } from '@/lib/validation/schemas'
 import { BULK_BATCH_SIZE, ROLE_IDS } from '@/lib/constants'
+import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITY_TYPES } from '@/lib/utils/audit-log'
 import type { Database } from '@/lib/supabase/database.types'
 import type { UserRoleQueryResult, SimpleUser } from '@/lib/types'
 
@@ -63,6 +64,16 @@ export async function createDepartment(name: string) {
 
     revalidatePath('/admin/departments')
     revalidatePath('/admin')
+    
+    // Audit log
+    const currentUser = await requireAdmin()
+    createAuditLog({
+      userId: currentUser.id,
+      action: AUDIT_ACTIONS.DEPARTMENT_CREATE,
+      entityType: AUDIT_ENTITY_TYPES.DEPARTMENT,
+      entityId: data.id,
+      changes: { name: validated.name },
+    }).catch(console.error)
 
     return {
       success: true,
@@ -150,6 +161,21 @@ export async function updateDepartment(
 
     revalidatePath('/admin/departments')
     revalidatePath('/admin')
+    
+    // Audit log
+    const currentUser = await requireAdmin()
+    const actionType = validated.is_active === false 
+      ? AUDIT_ACTIONS.DEPARTMENT_DEACTIVATE 
+      : validated.is_active === true 
+        ? AUDIT_ACTIONS.DEPARTMENT_ACTIVATE 
+        : AUDIT_ACTIONS.DEPARTMENT_UPDATE
+    createAuditLog({
+      userId: currentUser.id,
+      action: actionType,
+      entityType: AUDIT_ENTITY_TYPES.DEPARTMENT,
+      entityId: validated.department_id,
+      changes: updates,
+    }).catch(console.error)
 
     return {
       success: true,

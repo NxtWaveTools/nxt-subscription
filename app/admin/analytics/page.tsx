@@ -3,60 +3,26 @@
 // Admin analytics with charts and metrics
 // ============================================================================
 
-import { createClient } from '@/lib/supabase/server'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { DepartmentAnalyticsChart } from './components/department-analytics-chart'
 import { RoleDistributionChart } from './components/role-distribution-chart'
 import { UserActivityChart } from './components/user-activity-chart'
 import { Users, Building2, UserCheck, UserX } from 'lucide-react'
-import type { RoleCounts } from '@/lib/types'
-
-// Role stats query result type
-interface RoleStatRow {
-  role_id: string
-  roles: { name: string }
-}
+import {
+  fetchRoleDistribution,
+  fetchUserActivityStats,
+  fetchActiveDepartmentCount,
+  fetchDepartmentAnalytics,
+} from '@/lib/data-access'
 
 export default async function AnalyticsPage() {
-  const supabase = await createClient()
-
-  // Use the department_analytics view instead of N+1 queries
-  const { data: departmentAnalytics } = await supabase
-    .from('department_analytics')
-    .select('*')
-    .eq('is_active', true)
-
-  // Fetch role distribution
-  const { data: roleStats } = await supabase
-    .from('user_roles')
-    .select(`
-      role_id,
-      roles!inner(name)
-    `)
-
-  // Count roles
-  const roleCounts = (roleStats as RoleStatRow[] | null)?.reduce<RoleCounts>((acc, ur) => {
-    const roleName = ur.roles.name
-    acc[roleName] = (acc[roleName] || 0) + 1
-    return acc
-  }, {})
-
-  // Fetch overall stats
-  const { count: totalUsers } = await supabase
-    .from('users')
-    .select('*', { count: 'exact', head: true })
-
-  const { count: activeUsers } = await supabase
-    .from('users')
-    .select('*', { count: 'exact', head: true })
-    .eq('is_active', true)
-
-  const { count: totalDepartments } = await supabase
-    .from('departments')
-    .select('*', { count: 'exact', head: true })
-    .eq('is_active', true)
-
-  const inactiveUsers = (totalUsers || 0) - (activeUsers || 0)
+  // Use data access layer with database-level aggregation (no in-memory filtering)
+  const [roleDistribution, userStats, departmentCount, departmentAnalytics] = await Promise.all([
+    fetchRoleDistribution(),
+    fetchUserActivityStats(),
+    fetchActiveDepartmentCount(),
+    fetchDepartmentAnalytics(),
+  ])
 
   return (
     <div className="space-y-6">
@@ -75,7 +41,7 @@ export default async function AnalyticsPage() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalUsers || 0}</div>
+            <div className="text-2xl font-bold">{userStats.totalUsers}</div>
           </CardContent>
         </Card>
 
@@ -85,9 +51,9 @@ export default async function AnalyticsPage() {
             <UserCheck className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{activeUsers || 0}</div>
+            <div className="text-2xl font-bold">{userStats.activeUsers}</div>
             <p className="text-xs text-muted-foreground">
-              {totalUsers ? Math.round(((activeUsers || 0) / totalUsers) * 100) : 0}% of total
+              {userStats.activePercentage}% of total
             </p>
           </CardContent>
         </Card>
@@ -98,9 +64,11 @@ export default async function AnalyticsPage() {
             <UserX className="h-4 w-4 text-destructive" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{inactiveUsers}</div>
+            <div className="text-2xl font-bold">{userStats.inactiveUsers}</div>
             <p className="text-xs text-muted-foreground">
-              {totalUsers ? Math.round((inactiveUsers / totalUsers) * 100) : 0}% of total
+              {userStats.totalUsers > 0 
+                ? Math.round((userStats.inactiveUsers / userStats.totalUsers) * 100) 
+                : 0}% of total
             </p>
           </CardContent>
         </Card>
@@ -111,7 +79,7 @@ export default async function AnalyticsPage() {
             <Building2 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalDepartments || 0}</div>
+            <div className="text-2xl font-bold">{departmentCount}</div>
           </CardContent>
         </Card>
       </div>
@@ -124,7 +92,7 @@ export default async function AnalyticsPage() {
             <CardDescription>Users per department</CardDescription>
           </CardHeader>
           <CardContent>
-            <DepartmentAnalyticsChart data={departmentAnalytics || []} />
+            <DepartmentAnalyticsChart data={departmentAnalytics} />
           </CardContent>
         </Card>
 
@@ -134,7 +102,7 @@ export default async function AnalyticsPage() {
             <CardDescription>User count by role</CardDescription>
           </CardHeader>
           <CardContent>
-            <RoleDistributionChart data={roleCounts || {}} />
+            <RoleDistributionChart data={roleDistribution} />
           </CardContent>
         </Card>
       </div>
@@ -145,7 +113,7 @@ export default async function AnalyticsPage() {
           <CardDescription>Active vs Inactive users</CardDescription>
         </CardHeader>
         <CardContent>
-          <UserActivityChart active={activeUsers || 0} inactive={inactiveUsers} />
+          <UserActivityChart active={userStats.activeUsers} inactive={userStats.inactiveUsers} />
         </CardContent>
       </Card>
     </div>

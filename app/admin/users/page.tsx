@@ -3,13 +3,13 @@
 // ============================================================================
 
 import { Suspense } from 'react'
-import { createClient } from '@/lib/supabase/server'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { UsersTable } from './components/users-table'
 import { UsersFilters } from './components/users-filters'
 import { CreateUserButton } from './components/create-user-button'
-import type { UserWithRoles } from '@/lib/types'
+import { fetchUsers, fetchRoles, fetchActiveDepartments } from '@/lib/data-access'
+import { validatePageParams, calculateTotalPages, clampPage } from '@/lib/utils/pagination'
 
 interface UsersPageProps {
   searchParams: Promise<{
@@ -23,87 +23,35 @@ interface UsersPageProps {
 }
 
 export default async function UsersPage({ searchParams }: UsersPageProps) {
-  const supabase = await createClient()
   const params = await searchParams
 
-  // Parse search params
-  const search = params.search || ''
+  // Validate and normalize pagination params (handles negative/invalid values)
+  const { page, limit, offset } = validatePageParams({
+    page: params.page,
+    limit: params.limit,
+  })
+
+  // Parse filter params
+  const search = params.search?.trim().slice(0, 100) || '' // Max 100 chars for search
   const roleId = params.role_id
   const departmentId = params.department_id
-  const isActiveFilter = params.is_active
-  const page = parseInt(params.page || '1')
-  const limit = Math.min(parseInt(params.limit || '20'), 100)
-  const offset = (page - 1) * limit
+  const isActiveFilter = params.is_active === 'true' ? true : params.is_active === 'false' ? false : undefined
 
-  // Build query
-  let query = supabase
-    .from('users')
-    .select(
-      `
-      *,
-      user_roles!inner(
-        role_id,
-        roles(id, name)
-      )
-    `,
-      { count: 'exact' }
-    )
+  // Fetch data using centralized data access layer
+  const [usersResult, roles, departments] = await Promise.all([
+    fetchUsers(
+      { search, roleId, isActive: isActiveFilter },
+      { page, limit, offset }
+    ),
+    fetchRoles(),
+    fetchActiveDepartments(),
+  ])
 
-  // Apply fuzzy search if search term provided
-  if (search) {
-    // Use similarity search with pg_trgm
-    query = query.or(`name.ilike.%${search}%,email.ilike.%${search}%`)
-  }
-
-  // Apply filters
-  if (isActiveFilter !== undefined) {
-    query = query.eq('is_active', isActiveFilter === 'true')
-  }
-
-  // Filter by role at database level (NOT in-memory per project guidelines)
-  if (roleId) {
-    query = query.eq('user_roles.role_id', roleId)
-  }
-
-  // Apply pagination
-  query = query.range(offset, offset + limit - 1).order('created_at', { ascending: false })
-
-  const { data: users, error, count } = await query
-
-  // Fetch all roles for filter dropdown
-  const { data: roles } = await supabase.from('roles').select('id, name').order('name')
-
-  // Fetch all departments for filter dropdown  
-  const { data: departments } = await supabase
-    .from('departments')
-    .select('id, name')
-    .eq('is_active', true)
-    .order('name')
-
-  if (error) {
-    return (
-      <div className="space-y-4">
-        <h1 className="text-3xl font-bold">Users</h1>
-        <Card>
-          <CardContent className="p-6">
-            <p className="text-destructive">Error loading users: {error.message}</p>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
-
-  // Supabase returns user_roles as array, normalize to single object (one-to-one relationship)
-  const normalizedUsers: UserWithRoles[] = (users || []).map((user) => ({
-    ...user,
-    // Take first role from array (one-to-one relationship means max 1)
-    user_roles: Array.isArray(user.user_roles) && user.user_roles.length > 0 
-      ? user.user_roles[0] 
-      : null,
-  }))
-
-  const totalCount = count || 0
-  const totalPages = Math.ceil(totalCount / limit)
+  const { users, totalCount } = usersResult
+  const totalPages = calculateTotalPages(totalCount, limit)
+  
+  // Clamp page to valid range (in case user manually entered invalid page number)
+  const currentPage = clampPage(page, totalPages)
 
   return (
     <div className="space-y-6">
@@ -113,18 +61,18 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
           <h1 className="text-3xl font-bold tracking-tight">Users</h1>
           <p className="text-muted-foreground">Manage user accounts and permissions</p>
         </div>
-        <CreateUserButton roles={roles || []} />
+        <CreateUserButton roles={roles} />
       </div>
 
       {/* Filters */}
       <UsersFilters
-        roles={roles || []}
-        departments={departments || []}
+        roles={roles}
+        departments={departments}
         defaultValues={{
           search,
           role_id: roleId,
           department_id: departmentId,
-          is_active: isActiveFilter,
+          is_active: params.is_active,
         }}
       />
 
@@ -133,19 +81,31 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
         <CardHeader>
           <CardTitle>All Users ({totalCount})</CardTitle>
           <CardDescription>
-            {page > 1 && `Page ${page} of ${totalPages} • `}
-            {normalizedUsers.length} users displayed
+            {totalPages > 1 && `Page ${currentPage} of ${totalPages} • `}
+            {users.length} users displayed
+            {totalCount === 0 && ' • No users found'}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Suspense fallback={<Skeleton className="h-[400px] w-full" />}>
-            <UsersTable
-              users={normalizedUsers}
-              roles={roles || []}
-              currentPage={page}
-              totalPages={totalPages}
-              totalCount={totalCount}
-            />
+            {users.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <p className="text-muted-foreground">No users found</p>
+                {search && (
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Try adjusting your search or filters
+                  </p>
+                )}
+              </div>
+            ) : (
+              <UsersTable
+                users={users}
+                roles={roles}
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalCount={totalCount}
+              />
+            )}
           </Suspense>
         </CardContent>
       </Card>

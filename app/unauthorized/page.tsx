@@ -3,18 +3,9 @@
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { ShieldX } from 'lucide-react'
-import Link from 'next/link'
+import { SUPPORT_EMAIL } from '@/lib/constants'
 
 export default function UnauthorizedPage() {
-  const handleSignOut = () => {
-    // Use form submission to trigger server-side signout
-    const form = document.createElement('form')
-    form.method = 'POST'
-    form.action = '/api/auth/signout'
-    document.body.appendChild(form)
-    form.submit()
-  }
-
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-zinc-50 to-zinc-100 dark:from-zinc-950 dark:to-zinc-900 p-4">
       <Card className="w-full max-w-md text-center">
@@ -29,14 +20,17 @@ export default function UnauthorizedPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Button variant="outline" className="w-full" onClick={handleSignOut}>
-            Sign Out
-          </Button>
+          {/* Use proper form submission instead of DOM manipulation */}
+          <form action="/api/auth/signout" method="POST">
+            <Button type="submit" variant="outline" className="w-full">
+              Sign Out
+            </Button>
+          </form>
           <p className="text-sm text-muted-foreground">
             Need access?{' '}
-            <Link href="mailto:admin@example.com" className="text-primary underline">
+            <a href={`mailto:${SUPPORT_EMAIL}`} className="text-primary underline">
               Contact Support
-            </Link>
+            </a>
           </p>
         </CardContent>
       </Card>

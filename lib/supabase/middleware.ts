@@ -1,9 +1,10 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import type { Database } from './database.types'
+import { ROLES, ROLE_IDS, ROUTES } from '@/lib/constants'
 
 /**
- * Update user session for Server Components
+ * Update user session and enforce route protection for Server Components
  * This ensures auth state is available throughout your app
  */
 export async function updateSession(request: NextRequest) {
@@ -48,11 +49,38 @@ export async function updateSession(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname
 
-  // Protected routes - redirect to login if not authenticated
-  if (pathname.startsWith('/admin')) {
+  // Protected admin routes - require authentication AND admin/finance role
+  if (pathname.startsWith('/admin') || pathname.startsWith('/api/admin')) {
     if (!user) {
       const url = request.nextUrl.clone()
-      url.pathname = '/login'
+      url.pathname = ROUTES.LOGIN
+      return NextResponse.redirect(url)
+    }
+
+    // Check if user has admin/finance role and is active
+    const { data: userData } = await supabase
+      .from('users')
+      .select('is_active')
+      .eq('id', user.id)
+      .single()
+
+    if (!userData || !userData.is_active) {
+      const url = request.nextUrl.clone()
+      url.pathname = ROUTES.UNAUTHORIZED
+      return NextResponse.redirect(url)
+    }
+
+    // Check user role - only ADMIN and FINANCE can access admin routes
+    const { data: userRole } = await supabase
+      .from('user_roles')
+      .select('role_id')
+      .eq('user_id', user.id)
+      .single()
+
+    const adminRoleIds: string[] = [ROLE_IDS.ADMIN, ROLE_IDS.FINANCE]
+    if (!userRole || !adminRoleIds.includes(userRole.role_id)) {
+      const url = request.nextUrl.clone()
+      url.pathname = ROUTES.UNAUTHORIZED
       return NextResponse.redirect(url)
     }
   }

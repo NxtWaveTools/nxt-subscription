@@ -152,3 +152,49 @@ export function validatePaginationParams(params: {
     cursor: params.cursor,
   }
 }
+
+/**
+ * Validates and normalizes page-based pagination params from URL search params
+ * Returns safe defaults for invalid inputs
+ */
+export function validatePageParams(params: {
+  page?: string | number
+  limit?: string | number
+}): { page: number; limit: number; offset: number } {
+  // Parse and validate page
+  let page = parseInt(String(params.page || '1'), 10)
+  if (isNaN(page) || page < 1) {
+    page = 1
+  }
+
+  // Parse and validate limit
+  let limit = parseInt(String(params.limit || PAGINATION_DEFAULTS.LIMIT), 10)
+  if (isNaN(limit) || limit < PAGINATION_DEFAULTS.MIN_LIMIT) {
+    limit = PAGINATION_DEFAULTS.LIMIT
+  }
+  if (limit > PAGINATION_DEFAULTS.MAX_LIMIT) {
+    limit = PAGINATION_DEFAULTS.MAX_LIMIT
+  }
+
+  // Calculate offset
+  const offset = (page - 1) * limit
+
+  return { page, limit, offset }
+}
+
+/**
+ * Safely calculates total pages with bounds checking
+ */
+export function calculateTotalPages(totalCount: number, limit: number): number {
+  if (totalCount <= 0 || limit <= 0) return 1
+  return Math.ceil(totalCount / limit)
+}
+
+/**
+ * Ensures page number is within valid bounds
+ */
+export function clampPage(page: number, totalPages: number): number {
+  if (page < 1) return 1
+  if (page > totalPages) return totalPages
+  return page
+}

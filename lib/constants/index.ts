@@ -70,3 +70,24 @@ export const ERROR_MESSAGES = {
   [AUTH_ERRORS.INVALID_CREDENTIALS]: 'Invalid credentials provided.',
   DEFAULT: 'An unexpected error occurred. Please try again.',
 } as const
+
+// Support contact
+export const SUPPORT_EMAIL = 'support@nxtsubscription.com' as const
+
+// Pagination defaults
+export const PAGINATION = {
+  DEFAULT_PAGE: 1,
+  DEFAULT_LIMIT: 20,
+  MAX_LIMIT: 100,
+  MIN_LIMIT: 1,
+} as const
+
+// Export batch size for streaming
+export const EXPORT_BATCH_SIZE = 1000 as const
+
+// Rate limiting
+export const RATE_LIMITS = {
+  LOGIN_ATTEMPTS_PER_MINUTE: 5,
+  EXPORT_REQUESTS_PER_HOUR: 10,
+  BULK_OPERATIONS_PER_MINUTE: 3,
+} as const

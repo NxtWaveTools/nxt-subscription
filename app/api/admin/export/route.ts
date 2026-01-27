@@ -1,128 +1,98 @@
 // ============================================================================
 // CSV Export API Route
-// Streaming export for users and departments
+// Streaming export for users and departments with batched fetching
 // ============================================================================
 
 import { NextRequest, NextResponse } from 'next/server'
+import { requireAdmin, getCurrentUser } from '@/lib/auth/user'
+import { fetchUsersForExport, fetchDepartmentsForExport } from '@/lib/data-access'
 import { createClient } from '@/lib/supabase/server'
-import { requireAdmin } from '@/lib/auth/user'
+import { EXPORT_BATCH_SIZE, EXPORT_TYPES } from '@/lib/constants'
+import { auditBulkAction, AUDIT_ACTIONS, AUDIT_ENTITY_TYPES } from '@/lib/utils/audit-log'
 import Papa from 'papaparse'
-
-// Types for raw Supabase export data (returns arrays for joins)
-interface UserExportRowRaw {
-  id: string
-  email: string
-  name: string | null
-  is_active: boolean
-  created_at: string
-  user_roles: Array<{
-    roles: { name: string }
-  }>
-}
-
-interface DepartmentExportRow {
-  id: string
-  name: string
-  is_active: boolean
-  created_at: string
-  hod_departments: Array<{
-    users: { name: string | null; email: string }
-  }>
-}
 
 export async function GET(request: NextRequest) {
   try {
-    // Require admin
-    await requireAdmin()
+    // Require admin role - this throws if unauthorized
+    const currentUser = await requireAdmin()
 
     const searchParams = request.nextUrl.searchParams
-    const type = searchParams.get('type') || 'users'
+    const type = searchParams.get('type') || EXPORT_TYPES.USERS
 
-    const supabase = await createClient()
+    if (type === EXPORT_TYPES.USERS) {
+      // Stream users export using batched fetching (prevents OOM)
+      const csvRows: Array<Record<string, string | number>> = []
 
-    if (type === 'users') {
-      // Export users with roles
-      const { data: users, error } = await supabase
-        .from('users')
-        .select(`
-          id,
-          email,
-          name,
-          is_active,
-          created_at,
-          user_roles (
-            roles (
-              name
-            )
-          )
-        `)
-        .order('created_at', { ascending: false })
-
-      if (error) {
-        return NextResponse.json({ error: 'Failed to fetch users' }, { status: 500 })
+      for await (const batch of fetchUsersForExport(EXPORT_BATCH_SIZE)) {
+        for (const user of batch) {
+          csvRows.push({
+            ID: user.id,
+            Email: user.email,
+            Name: user.name || '',
+            Status: user.is_active ? 'Active' : 'Inactive',
+            Role: Array.isArray(user.user_roles) && user.user_roles[0]?.roles?.name 
+              ? user.user_roles[0].roles.name 
+              : 'No role',
+            'Created At': new Date(user.created_at).toISOString(),
+          })
+        }
       }
 
-      // Transform data for CSV (normalize array to single object)
-      const csvData = ((users || []) as UserExportRowRaw[]).map((user) => ({
-        ID: user.id,
-        Email: user.email,
-        Name: user.name || '',
-        Status: user.is_active ? 'Active' : 'Inactive',
-        Role: user.user_roles?.[0]?.roles?.name || 'No role',
-        'Created At': new Date(user.created_at).toISOString(),
-      }))
+      // Log the export action
+      await auditBulkAction(
+        currentUser.id,
+        AUDIT_ACTIONS.EXPORT_USERS,
+        AUDIT_ENTITY_TYPES.EXPORT,
+        [],
+        { count: csvRows.length, type: 'users' }
+      )
 
-      const csv = Papa.unparse(csvData)
+      const csv = Papa.unparse(csvRows)
 
       return new NextResponse(csv, {
         headers: {
-          'Content-Type': 'text/csv',
-          'Content-Disposition': `attachment; filename="users-${new Date().toISOString()}.csv"`,
+          'Content-Type': 'text/csv; charset=utf-8',
+          'Content-Disposition': `attachment; filename="users-${new Date().toISOString().split('T')[0]}.csv"`,
         },
       })
-    } else if (type === 'departments') {
-      // Export departments with HODs
-      const { data: departments, error } = await supabase
-        .from('departments')
-        .select(`
-          id,
-          name,
-          is_active,
-          created_at,
-          hod_departments (
-            users (
-              name,
-              email
-            )
-          )
-        `)
-        .order('created_at', { ascending: false })
+    } else if (type === EXPORT_TYPES.DEPARTMENTS) {
+      // Stream departments export using batched fetching
+      const csvRows: Array<Record<string, string | number>> = []
 
-      if (error) {
-        return NextResponse.json({ error: 'Failed to fetch departments' }, { status: 500 })
+      for await (const batch of fetchDepartmentsForExport(EXPORT_BATCH_SIZE)) {
+        for (const dept of batch) {
+          csvRows.push({
+            ID: dept.id,
+            Name: dept.name,
+            Status: dept.is_active ? 'Active' : 'Inactive',
+            HODs: Array.isArray(dept.hod_departments) 
+              ? dept.hod_departments.map(hd => hd.users?.name || hd.users?.email || 'Unknown').join(', ')
+              : 'No HODs',
+            'Created At': new Date(dept.created_at).toISOString(),
+          })
+        }
       }
 
-      // Transform data for CSV
-      const csvData = (departments as DepartmentExportRow[]).map((dept) => ({
-        ID: dept.id,
-        Name: dept.name,
-        Status: dept.is_active ? 'Active' : 'Inactive',
-        HODs: dept.hod_departments
-          ?.map((hd) => hd.users.name || hd.users.email)
-          .join(', ') || 'No HODs',
-        'Created At': new Date(dept.created_at).toISOString(),
-      }))
+      // Log the export action
+      await auditBulkAction(
+        currentUser.id,
+        AUDIT_ACTIONS.EXPORT_DEPARTMENTS,
+        AUDIT_ENTITY_TYPES.EXPORT,
+        [],
+        { count: csvRows.length, type: 'departments' }
+      )
 
-      const csv = Papa.unparse(csvData)
+      const csv = Papa.unparse(csvRows)
 
       return new NextResponse(csv, {
         headers: {
-          'Content-Type': 'text/csv',
-          'Content-Disposition': `attachment; filename="departments-${new Date().toISOString()}.csv"`,
+          'Content-Type': 'text/csv; charset=utf-8',
+          'Content-Disposition': `attachment; filename="departments-${new Date().toISOString().split('T')[0]}.csv"`,
         },
       })
     } else if (type === 'analytics') {
-      // Export department analytics using the view
+      // Analytics export (small dataset, no batching needed)
+      const supabase = await createClient()
       const { data: analytics, error: analyticsError } = await supabase
         .from('department_analytics')
         .select('name, is_active, hod_count, poc_count')
@@ -142,8 +112,8 @@ export async function GET(request: NextRequest) {
 
       return new NextResponse(csv, {
         headers: {
-          'Content-Type': 'text/csv',
-          'Content-Disposition': `attachment; filename="analytics-${new Date().toISOString()}.csv"`,
+          'Content-Type': 'text/csv; charset=utf-8',
+          'Content-Disposition': `attachment; filename="analytics-${new Date().toISOString().split('T')[0]}.csv"`,
         },
       })
     } else {
@@ -151,9 +121,14 @@ export async function GET(request: NextRequest) {
     }
   } catch (error) {
     console.error('Export error:', error)
+    
+    // Don't expose internal errors to client
+    const isAuthError = error instanceof Error && 
+      (error.message.includes('Unauthorized') || error.message.includes('Forbidden'))
+    
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Export failed' },
-      { status: 500 }
+      { error: isAuthError ? error.message : 'Export failed' },
+      { status: isAuthError ? 403 : 500 }
     )
   }
 }
