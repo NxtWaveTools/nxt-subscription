@@ -31,3 +31,49 @@ export {
   fetchActiveDepartmentCount,
   type UserActivityStats,
 } from './analytics'
+
+export {
+  fetchLocations,
+  fetchLocationById,
+  searchLocations,
+  fetchActiveLocations,
+  isLocationUsedInSubscriptions,
+  fetchLocationsForExport,
+  type LocationFilters,
+  type LocationPaginationOptions,
+  type LocationListResponse,
+} from './locations'
+
+export {
+  fetchSubscriptions,
+  fetchSubscriptionById,
+  fetchSubscriptionFiles,
+  fetchSubscriptionApprovals,
+  fetchPendingSubscriptionsForPOC,
+  getSubscriptionCountsByStatus,
+  fetchSubscriptionsForExport,
+  getSubscriptionStatus,
+  type SubscriptionFilters,
+  type SubscriptionPaginationOptions,
+  type SubscriptionListResponse,
+} from './subscriptions'
+
+export {
+  fetchActiveVendors,
+  fetchAllVendors,
+  fetchVendorById,
+  searchVendors,
+  createVendor,
+  updateVendor,
+  vendorNameExists,
+} from './vendors'
+
+export {
+  fetchActiveProducts,
+  fetchAllProducts,
+  fetchProductById,
+  searchProducts,
+  createProduct,
+  updateProduct,
+  productNameExists,
+} from './products'

@@ -113,3 +113,248 @@ export interface DepartmentWithRelations extends Department {
 export interface RoleCounts {
   [roleName: string]: number
 }
+
+// ============================================================================
+// Location Types
+// ============================================================================
+
+export interface Location {
+  id: string
+  name: string
+  location_type: 'OFFICE' | 'NIAT' | 'OTHER'
+  address: string | null
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface LocationInsert {
+  name: string
+  location_type: 'OFFICE' | 'NIAT' | 'OTHER'
+  address?: string | null
+  is_active?: boolean
+}
+
+export interface LocationUpdate {
+  name?: string
+  location_type?: 'OFFICE' | 'NIAT' | 'OTHER'
+  address?: string | null
+  is_active?: boolean
+}
+
+// ============================================================================
+// Vendor Types
+// ============================================================================
+
+export interface Vendor {
+  id: string
+  name: string
+  is_active: boolean | null
+  created_at: string | null
+  updated_at: string | null
+}
+
+export interface VendorInsert {
+  name: string
+  is_active?: boolean | null
+}
+
+export interface VendorUpdate {
+  name?: string
+  is_active?: boolean | null
+}
+
+// ============================================================================
+// Product Types
+// ============================================================================
+
+export interface Product {
+  id: string
+  name: string
+  is_active: boolean | null
+  created_at: string | null
+  updated_at: string | null
+}
+
+export interface ProductInsert {
+  name: string
+  is_active?: boolean | null
+}
+
+export interface ProductUpdate {
+  name?: string
+  is_active?: boolean | null
+}
+
+// ============================================================================
+// Subscription Types
+// ============================================================================
+
+export interface Subscription {
+  id: string
+  subscription_id: string // Auto-generated: DEPT/FY26/001
+  request_type: 'INVOICE' | 'QUOTATION'
+  tool_name: string
+  vendor_name: string
+  product_id: string | null // Foreign key to products table
+  department_id: string
+  location_id: string | null
+  amount: number
+  equivalent_inr_amount: number | null // Equivalent amount in INR
+  currency: 'INR' | 'CHF' | 'USD' // Updated currency options
+  billing_frequency: 'MONTHLY' | 'QUARTERLY' | 'YEARLY' | 'USAGE_BASED'
+  payment_status: 'PAID' | 'IN_PROGRESS' | 'DECLINED' // Updated payment status
+  status: 'PENDING' | 'ACTIVE' | 'REJECTED' | 'EXPIRED' | 'CANCELLED'
+  accounting_status: 'PENDING' | 'DONE'
+  start_date: string | null
+  end_date: string | null
+  login_url: string | null
+  subscription_email: string | null // Mail ID/Username used for subscription
+  poc_email: string | null // POC email for subscription (auto-filled from department)
+  mandate_id: string | null // Mandate ID
+  budget_period: string | null // Budget period
+  payment_utr: string | null // Payment UTR
+  requester_remarks: string | null // Requester remarks
+  version: number
+  created_by: string
+  created_at: string
+  updated_at: string
+}
+
+export interface SubscriptionInsert {
+  request_type: 'INVOICE' | 'QUOTATION'
+  tool_name: string
+  vendor_name: string
+  product_id?: string | null // Foreign key to products table
+  department_id: string
+  location_id?: string | null
+  amount: number
+  equivalent_inr_amount?: number | null // Equivalent amount in INR
+  currency?: 'INR' | 'CHF' | 'USD' // Updated currency options
+  billing_frequency: 'MONTHLY' | 'QUARTERLY' | 'YEARLY' | 'USAGE_BASED'
+  start_date: string
+  end_date?: string | null
+  login_url?: string | null
+  subscription_email?: string | null // Mail ID/Username used for subscription
+  poc_email?: string | null // POC email for subscription (auto-filled from department)
+  mandate_id?: string | null // Mandate ID
+  budget_period?: string | null // Budget period
+  payment_utr?: string | null // Payment UTR
+  requester_remarks?: string | null // Requester remarks
+  payment_status?: 'PAID' | 'IN_PROGRESS' | 'DECLINED' // Updated payment status
+  accounting_status?: 'PENDING' | 'DONE'
+}
+
+export interface SubscriptionUpdate {
+  request_type?: 'INVOICE' | 'QUOTATION'
+  tool_name?: string
+  vendor_name?: string
+  product_id?: string | null // Foreign key to products table
+  department_id?: string
+  location_id?: string | null
+  amount?: number
+  equivalent_inr_amount?: number | null // Equivalent amount in INR
+  currency?: 'INR' | 'CHF' | 'USD' // Updated currency options
+  billing_frequency?: 'MONTHLY' | 'QUARTERLY' | 'YEARLY' | 'USAGE_BASED'
+  start_date?: string
+  end_date?: string | null
+  login_url?: string | null
+  subscription_email?: string | null // Mail ID/Username used for subscription
+  poc_email?: string | null // POC email for subscription (auto-filled from department)
+  mandate_id?: string | null // Mandate ID
+  budget_period?: string | null // Budget period
+  payment_utr?: string | null // Payment UTR
+  requester_remarks?: string | null // Requester remarks
+  payment_status?: 'PAID' | 'IN_PROGRESS' | 'DECLINED' // Updated payment status
+  accounting_status?: 'PENDING' | 'DONE'
+}
+
+/**
+ * Subscription with all related data (from list queries)
+ * Note: subscription_approvals and subscription_files are fetched separately
+ */
+export interface SubscriptionWithRelations extends Subscription {
+  departments: {
+    id: string
+    name: string
+  }
+  locations: {
+    id: string
+    name: string
+    location_type: string
+  } | null
+  vendors: {
+    id: string
+    name: string
+  } | null
+  products: {
+    id: string
+    name: string
+  } | null
+  creator: SimpleUser
+}
+
+/**
+ * Full subscription details including approvals and files
+ * Used when viewing a single subscription
+ */
+export interface SubscriptionFullDetails extends SubscriptionWithRelations {
+  subscription_approvals: SubscriptionApprovalWithApprover[]
+  subscription_files: SubscriptionFile[]
+}
+
+/**
+ * Subscription file metadata
+ */
+export interface SubscriptionFile {
+  id: string
+  subscription_id: string
+  file_type: 'PROOF_OF_PAYMENT' | 'INVOICE'
+  storage_path: string
+  original_filename: string
+  file_size: number | null
+  mime_type: string | null
+  uploaded_by: string
+  created_at: string
+}
+
+/**
+ * Subscription approval record
+ */
+export interface SubscriptionApproval {
+  id: string
+  subscription_id: string
+  approver_id: string
+  action: 'APPROVED' | 'REJECTED'
+  comments: string | null
+  created_at: string
+}
+
+/**
+ * Subscription approval with approver details
+ */
+export interface SubscriptionApprovalWithApprover extends SubscriptionApproval {
+  approver: SimpleUser
+}
+
+// ============================================================================
+// Notification Types
+// ============================================================================
+
+export interface Notification {
+  id: string
+  user_id: string
+  type: 'APPROVAL_REQUEST' | 'APPROVAL_DECISION' | 'PAYMENT_UPDATE' | 'GENERAL'
+  title: string
+  message: string
+  subscription_id: string | null
+  is_read: boolean
+  created_at: string
+}
+
+export interface NotificationWithSubscription extends Notification {
+  subscriptions: {
+    id: string
+    subscription_name: string
+  } | null
+}

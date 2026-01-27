@@ -1,9 +1,10 @@
 // ============================================================================
 // Admin Layout
+// Handles authentication and role-based access for ADMIN role only
 // ============================================================================
 
 import { redirect } from 'next/navigation'
-import { getCurrentUser, hasRole } from '@/lib/auth/user'
+import { getCurrentUser, hasAnyRole } from '@/lib/auth/user'
 import { ROUTES } from '@/lib/constants'
 import { AdminNav } from './components/admin-nav'
 
@@ -12,16 +13,21 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode
 }) {
-  // Verify user is authenticated and has ADMIN or FINANCE role
+  // Verify user is authenticated
   const user = await getCurrentUser()
 
-  // If no user profile exists (auth but no profile), or inactive user
-  if (!user || !user.is_active) {
+  // Must be authenticated
+  if (!user) {
+    redirect(ROUTES.LOGIN)
+  }
+
+  // Must be active
+  if (!user.is_active) {
     redirect(ROUTES.UNAUTHORIZED)
   }
 
-  if (!hasRole(user, 'ADMIN') && !hasRole(user, 'FINANCE')) {
-    // Non-admin users are redirected to unauthorized (they shouldn't access admin)
+  // Must have ADMIN role only
+  if (!hasAnyRole(user, ['ADMIN'])) {
     redirect(ROUTES.UNAUTHORIZED)
   }
 

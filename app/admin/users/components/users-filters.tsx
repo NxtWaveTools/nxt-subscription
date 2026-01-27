@@ -43,7 +43,8 @@ export function UsersFilters({ roles, defaultValues }: UsersFiltersProps) {
     const params = new URLSearchParams(searchParams.toString())
     
     Object.entries(newFilters).forEach(([key, value]) => {
-      if (value && value.trim()) {
+      // Skip 'all' values and empty strings - these mean "no filter"
+      if (value && value.trim() && value !== 'all') {
         params.set(key, value)
       } else {
         params.delete(key)
@@ -89,7 +90,10 @@ export function UsersFilters({ roles, defaultValues }: UsersFiltersProps) {
   }
 
   const hasActiveFilters =
-    searchInput || filters.role_id || filters.department_id || filters.is_active
+    searchInput || 
+    (filters.role_id && filters.role_id !== 'all') || 
+    filters.department_id || 
+    (filters.is_active && filters.is_active !== 'all')
 
   return (
     <div className="flex flex-col gap-4 rounded-lg border p-4">
@@ -107,14 +111,14 @@ export function UsersFilters({ roles, defaultValues }: UsersFiltersProps) {
 
         {/* Role Filter */}
         <Select
-          value={filters.role_id}
+          value={filters.role_id || 'all'}
           onValueChange={(value) => updateFilters({ role_id: value })}
         >
           <SelectTrigger className="w-full md:w-40">
             <SelectValue placeholder="All Roles" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value=" ">All Roles</SelectItem>
+            <SelectItem value="all">All Roles</SelectItem>
             {roles.map((role) => (
               <SelectItem key={role.id} value={role.id}>
                 {role.name}
@@ -125,14 +129,14 @@ export function UsersFilters({ roles, defaultValues }: UsersFiltersProps) {
 
         {/* Status Filter */}
         <Select
-          value={filters.is_active}
+          value={filters.is_active || 'all'}
           onValueChange={(value) => updateFilters({ is_active: value })}
         >
           <SelectTrigger className="w-full md:w-40">
             <SelectValue placeholder="All Users" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value=" ">All Users</SelectItem>
+            <SelectItem value="all">All Users</SelectItem>
             <SelectItem value="true">Active Only</SelectItem>
             <SelectItem value="false">Inactive Only</SelectItem>
           </SelectContent>

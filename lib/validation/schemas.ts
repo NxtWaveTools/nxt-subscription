@@ -3,7 +3,19 @@
 // ============================================================================
 
 import { z } from 'zod'
-import { ROLES, PAGINATION } from '@/lib/constants'
+import {
+  ROLES,
+  PAGINATION,
+  LOCATION_TYPES,
+  REQUEST_TYPES,
+  SUBSCRIPTION_STATUS,
+  PAYMENT_STATUS,
+  ACCOUNTING_STATUS,
+  BILLING_FREQUENCY,
+  CURRENCIES,
+  FILE_TYPES,
+  APPROVAL_ACTIONS,
+} from '@/lib/constants'
 
 // Extract role names from ROLES constant for type-safe enum
 const roleNames = [ROLES.ADMIN, ROLES.FINANCE, ROLES.HOD, ROLES.POC] as const
@@ -320,6 +332,274 @@ export const apiSchemas = {
    */
   idParam: z.object({
     id: z.string().uuid('Invalid ID'),
+  }),
+}
+
+// ============================================================================
+// Location Validation Schemas
+// ============================================================================
+
+const locationTypeValues = [
+  LOCATION_TYPES.OFFICE,
+  LOCATION_TYPES.NIAT,
+  LOCATION_TYPES.OTHER,
+] as const
+
+export const locationSchemas = {
+  /**
+   * Create location schema
+   */
+  create: z.object({
+    name: z.string().min(1, 'Location name is required').max(200, 'Name is too long'),
+    location_type: z.enum(locationTypeValues, {
+      message: 'Invalid location type',
+    }),
+    address: z.string().max(500, 'Address is too long').optional().nullable(),
+  }),
+
+  /**
+   * Update location schema
+   */
+  update: z.object({
+    name: z.string().min(1, 'Location name is required').max(200, 'Name is too long').optional(),
+    location_type: z.enum(locationTypeValues, {
+      message: 'Invalid location type',
+    }).optional(),
+    address: z.string().max(500, 'Address is too long').optional().nullable(),
+    is_active: z.boolean().optional(),
+  }),
+
+  /**
+   * Location ID validation
+   */
+  locationId: z.string().uuid('Invalid location ID'),
+
+  /**
+   * Search/filter locations schema
+   */
+  filter: z.object({
+    search: z.string().optional(),
+    location_type: z.enum(locationTypeValues).optional(),
+    is_active: z.boolean().optional(),
+  }),
+
+  /**
+   * Bulk toggle locations active status
+   */
+  bulkToggle: z.object({
+    location_ids: z.array(z.string().uuid()).min(1).max(100, 'Cannot exceed 100 locations'),
+    is_active: z.boolean(),
+  }),
+}
+
+// ============================================================================
+// Subscription Validation Schemas
+// ============================================================================
+
+const requestTypeValues = [REQUEST_TYPES.INVOICE, REQUEST_TYPES.QUOTATION] as const
+const subscriptionStatusValues = [
+  SUBSCRIPTION_STATUS.PENDING,
+  SUBSCRIPTION_STATUS.ACTIVE,
+  SUBSCRIPTION_STATUS.REJECTED,
+  SUBSCRIPTION_STATUS.EXPIRED,
+  SUBSCRIPTION_STATUS.CANCELLED,
+] as const
+const paymentStatusValues = [
+  PAYMENT_STATUS.PAID,
+  PAYMENT_STATUS.IN_PROGRESS,
+  PAYMENT_STATUS.DECLINED,
+] as const
+const accountingStatusValues = [ACCOUNTING_STATUS.PENDING, ACCOUNTING_STATUS.DONE] as const
+const billingFrequencyValues = [
+  BILLING_FREQUENCY.MONTHLY,
+  BILLING_FREQUENCY.QUARTERLY,
+  BILLING_FREQUENCY.YEARLY,
+  BILLING_FREQUENCY.USAGE_BASED,
+] as const
+const currencyValues = [
+  CURRENCIES.INR,
+  CURRENCIES.CHF,
+  CURRENCIES.USD,
+] as const
+const fileTypeValues = [FILE_TYPES.PROOF_OF_PAYMENT, FILE_TYPES.INVOICE] as const
+const approvalActionValues = [APPROVAL_ACTIONS.APPROVED, APPROVAL_ACTIONS.REJECTED] as const
+
+export const subscriptionSchemas = {
+  /**
+   * Create subscription schema
+   */
+  create: z.object({
+    request_type: z.enum(requestTypeValues, {
+      message: 'Invalid request type',
+    }),
+    tool_name: z.string().min(1, 'Tool name is required').max(200, 'Tool name is too long'),
+    vendor_name: z.string().min(1, 'Vendor name is required').max(200, 'Vendor name is too long'),
+    product_id: z.string().uuid('Invalid product ID').optional().nullable(),
+    department_id: z.string().uuid('Invalid department ID'),
+    location_id: z.string().uuid('Invalid location ID').nullable(),
+    amount: z.number().positive('Amount must be positive'),
+    equivalent_inr_amount: z.number().positive('Equivalent INR amount must be positive').optional().nullable(),
+    currency: z.enum(currencyValues, {
+      message: 'Invalid currency',
+    }).default('INR'),
+    billing_frequency: z.enum(billingFrequencyValues, {
+      message: 'Invalid billing frequency',
+    }),
+    login_url: z.string().url('Invalid URL').optional().nullable().or(z.literal('')),
+    subscription_email: z.string().email('Invalid subscription email').optional().nullable().or(z.literal('')),
+    poc_email: z.string().email('Invalid POC email').optional().nullable().or(z.literal('')),
+    mandate_id: z.string().max(100, 'Mandate ID is too long').optional().nullable(),
+    budget_period: z.string().max(50, 'Budget period is too long').optional().nullable(),
+    payment_utr: z.string().max(100, 'Payment UTR is too long').optional().nullable(),
+    requester_remarks: z.string().max(1000, 'Requester remarks too long').optional().nullable(),
+    start_date: z.coerce.date({
+      message: 'Invalid start date',
+    }),
+    end_date: z.coerce.date({
+      message: 'Invalid end date',
+    }).optional().nullable(),
+    payment_status: z.enum(paymentStatusValues, {
+      message: 'Invalid payment status',
+    }).optional().default('IN_PROGRESS'),
+    accounting_status: z.enum(accountingStatusValues, {
+      message: 'Invalid accounting status',
+    }).optional().default('PENDING'),
+  }).refine(
+    (data) => !data.end_date || data.end_date > data.start_date,
+    {
+      message: 'End date must be after start date',
+      path: ['end_date'],
+    }
+  ),
+
+  /**
+   * Update subscription schema
+   */
+  update: z.object({
+    request_type: z.enum(requestTypeValues).optional(),
+    tool_name: z.string().min(1).max(200).optional(),
+    vendor_name: z.string().min(1).max(200).optional(),
+    product_id: z.string().uuid().optional().nullable(),
+    department_id: z.string().uuid().optional(),
+    location_id: z.string().uuid().optional().nullable(),
+    amount: z.number().positive().optional(),
+    equivalent_inr_amount: z.number().positive().optional().nullable(),
+    currency: z.enum(currencyValues).optional(),
+    billing_frequency: z.enum(billingFrequencyValues).optional(),
+    login_url: z.string().url().optional().nullable().or(z.literal('')),
+    subscription_email: z.string().email().optional().nullable().or(z.literal('')),
+    poc_email: z.string().email().optional().nullable().or(z.literal('')),
+    mandate_id: z.string().max(100).optional().nullable(),
+    budget_period: z.string().max(50).optional().nullable(),
+    payment_utr: z.string().max(100).optional().nullable(),
+    requester_remarks: z.string().max(1000).optional().nullable(),
+    start_date: z.coerce.date().optional(),
+    end_date: z.coerce.date().optional().nullable(),
+    payment_status: z.enum(paymentStatusValues).optional(),
+    accounting_status: z.enum(accountingStatusValues).optional(),
+  }),
+
+  /**
+   * Approve subscription schema
+   */
+  approve: z.object({
+    comments: z.string().max(500, 'Comments too long').optional().nullable(),
+  }),
+
+  /**
+   * Reject subscription schema (comments required)
+   */
+  reject: z.object({
+    comments: z.string().min(10, 'Please provide a reason for rejection (min 10 characters)').max(500, 'Comments too long'),
+  }),
+
+  /**
+   * Bulk approve subscriptions schema
+   */
+  bulkApprove: z.object({
+    subscription_ids: z.array(z.string().uuid()).min(1).max(100, 'Cannot exceed 100 subscriptions'),
+    comments: z.string().max(500).optional().nullable(),
+  }),
+
+  /**
+   * Update payment status schema
+   */
+  updatePayment: z.object({
+    payment_status: z.enum(paymentStatusValues, {
+      message: 'Invalid payment status',
+    }),
+  }),
+
+  /**
+   * Update accounting status schema
+   */
+  updateAccounting: z.object({
+    accounting_status: z.enum(accountingStatusValues, {
+      message: 'Invalid accounting status',
+    }),
+  }),
+
+  /**
+   * Subscription ID validation
+   */
+  subscriptionId: z.string().uuid('Invalid subscription ID'),
+
+  /**
+   * Search/filter subscriptions schema
+   */
+  filter: z.object({
+    search: z.string().optional(),
+    department_id: z.string().uuid().optional(),
+    location_id: z.string().uuid().optional(),
+    product_id: z.string().uuid().optional(),
+    status: z.enum(subscriptionStatusValues).optional(),
+    payment_status: z.enum(paymentStatusValues).optional(),
+    accounting_status: z.enum(accountingStatusValues).optional(),
+    request_type: z.enum(requestTypeValues).optional(),
+    billing_frequency: z.enum(billingFrequencyValues).optional(),
+    start_date_from: z.coerce.date().optional(),
+    start_date_to: z.coerce.date().optional(),
+  }),
+}
+
+// ============================================================================
+// File Upload Validation Schemas
+// ============================================================================
+
+export const fileSchemas = {
+  /**
+   * File upload metadata schema
+   */
+  upload: z.object({
+    subscription_id: z.string().uuid('Invalid subscription ID'),
+    file_type: z.enum(fileTypeValues, {
+      message: 'Invalid file type',
+    }),
+    original_filename: z.string().min(1, 'File name is required').max(255, 'File name too long'),
+    file_size: z.number().positive('File size must be positive'),
+  }),
+
+  /**
+   * File ID validation
+   */
+  fileId: z.string().uuid('Invalid file ID'),
+}
+
+// ============================================================================
+// Notification Schemas
+// ============================================================================
+
+export const notificationSchemas = {
+  /**
+   * Notification ID validation
+   */
+  notificationId: z.string().uuid('Invalid notification ID'),
+
+  /**
+   * Mark notifications as read
+   */
+  markRead: z.object({
+    notification_ids: z.array(z.string().uuid()).min(1).max(100),
   }),
 }
 

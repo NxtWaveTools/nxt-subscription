@@ -41,6 +41,29 @@ export const AUDIT_ACTIONS = {
   // Export actions
   EXPORT_USERS: 'export.users',
   EXPORT_DEPARTMENTS: 'export.departments',
+  
+  // Subscription actions
+  SUBSCRIPTION_CREATE: 'subscription.create',
+  SUBSCRIPTION_UPDATE: 'subscription.update',
+  SUBSCRIPTION_DELETE: 'subscription.delete',
+  SUBSCRIPTION_APPROVE: 'subscription.approve',
+  SUBSCRIPTION_REJECT: 'subscription.reject',
+  SUBSCRIPTION_CANCEL: 'subscription.cancel',
+  SUBSCRIPTION_PAYMENT_UPDATE: 'subscription.payment.update',
+  SUBSCRIPTION_ACCOUNTING_UPDATE: 'subscription.accounting.update',
+  BULK_SUBSCRIPTION_APPROVE: 'bulk.subscription.approve',
+  EXPORT_SUBSCRIPTIONS: 'export.subscriptions',
+  
+  // Location actions
+  LOCATION_CREATE: 'location.create',
+  LOCATION_UPDATE: 'location.update',
+  LOCATION_DELETE: 'location.delete',
+  LOCATION_ACTIVATE: 'location.activate',
+  LOCATION_DEACTIVATE: 'location.deactivate',
+  
+  // File actions
+  FILE_UPLOAD: 'file.upload',
+  FILE_DELETE: 'file.delete',
 } as const
 
 export type AuditAction = typeof AUDIT_ACTIONS[keyof typeof AUDIT_ACTIONS]
@@ -55,6 +78,10 @@ export const AUDIT_ENTITY_TYPES = {
   HOD_DEPARTMENT: 'hod_department',
   POC_DEPARTMENT: 'poc_department',
   EXPORT: 'export',
+  SUBSCRIPTION: 'subscription',
+  LOCATION: 'location',
+  SUBSCRIPTION_FILE: 'subscription_file',
+  SUBSCRIPTION_APPROVAL: 'subscription_approval',
 } as const
 
 export type AuditEntityType = typeof AUDIT_ENTITY_TYPES[keyof typeof AUDIT_ENTITY_TYPES]

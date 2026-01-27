@@ -44,11 +44,19 @@ export async function createDepartment(name: string) {
       }
     }
 
+    // Generate short code from department name
+    const shortCode = validated.name
+      .split(' ')
+      .map(word => word[0]?.toUpperCase() || '')
+      .join('')
+      .substring(0, 5) || 'DEPT'
+
     // Create department
     const { data, error } = await supabase
       .from('departments')
       .insert({
         name: validated.name,
+        short_code: shortCode,
         is_active: true,
       })
       .select()
@@ -377,7 +385,7 @@ export async function assignHODToDepartment(departmentId: string, hodId: string)
     // Check if assignment already exists
     const { data: existing } = await supabase
       .from('hod_departments')
-      .select('*')
+      .select('hod_id, department_id, created_at')
       .eq('department_id', validated.department_id)
       .eq('hod_id', validated.hod_id)
       .maybeSingle()
@@ -504,7 +512,7 @@ export async function assignPOCToHOD(hodId: string, pocId: string) {
     // Check if HOD already has a POC
     const { data: existing } = await supabase
       .from('hod_poc_mapping')
-      .select('*')
+      .select('hod_id, poc_id, created_at')
       .eq('hod_id', validated.hod_id)
       .maybeSingle()
 
@@ -624,7 +632,7 @@ export async function grantPOCAccessToDepartment(pocId: string, departmentId: st
     // Check if access already exists
     const { data: existing } = await supabase
       .from('poc_department_access')
-      .select('*')
+      .select('poc_id, department_id, created_at')
       .eq('poc_id', validated.poc_id)
       .eq('department_id', validated.department_id)
       .maybeSingle()
@@ -754,21 +762,19 @@ export async function searchHODUsers(query: string, excludeIds: string[] = []) {
     const excludeSet = new Set(excludeIds)
 
     const filtered = (hodUsers || [])
-      .filter((ur): ur is UserRoleQueryResult & { users: NonNullable<UserRoleQueryResult['users']> } => 
-        ur.users !== null && ur.users.is_active
-      )
-      .filter((ur) => !excludeSet.has(ur.users.id))
+      .filter((ur) => ur.users !== null && ur.users.is_active)
+      .filter((ur) => !excludeSet.has(ur.users!.id))
       .filter((ur) => {
         if (!searchLower) return true
-        const name = ur.users.name?.toLowerCase() || ''
-        const email = ur.users.email.toLowerCase()
+        const name = ur.users!.name?.toLowerCase() || ''
+        const email = ur.users!.email.toLowerCase()
         return name.includes(searchLower) || email.includes(searchLower)
       })
       .slice(0, 10)
       .map((ur): SimpleUser => ({
-        id: ur.users.id,
-        name: ur.users.name,
-        email: ur.users.email,
+        id: ur.users!.id,
+        name: ur.users!.name,
+        email: ur.users!.email,
       }))
 
     return { success: true, data: filtered }
@@ -814,21 +820,19 @@ export async function searchPOCUsers(query: string, excludeIds: string[] = []) {
     const excludeSet = new Set(excludeIds)
 
     const filtered = (pocUsers || [])
-      .filter((ur): ur is UserRoleQueryResult & { users: NonNullable<UserRoleQueryResult['users']> } => 
-        ur.users !== null && ur.users.is_active
-      )
-      .filter((ur) => !excludeSet.has(ur.users.id))
+      .filter((ur) => ur.users !== null && ur.users.is_active)
+      .filter((ur) => !excludeSet.has(ur.users!.id))
       .filter((ur) => {
         if (!searchLower) return true
-        const name = ur.users.name?.toLowerCase() || ''
-        const email = ur.users.email.toLowerCase()
+        const name = ur.users!.name?.toLowerCase() || ''
+        const email = ur.users!.email.toLowerCase()
         return name.includes(searchLower) || email.includes(searchLower)
       })
       .slice(0, 10)
       .map((ur): SimpleUser => ({
-        id: ur.users.id,
-        name: ur.users.name,
-        email: ur.users.email,
+        id: ur.users!.id,
+        name: ur.users!.name,
+        email: ur.users!.email,
       }))
 
     return { success: true, data: filtered }

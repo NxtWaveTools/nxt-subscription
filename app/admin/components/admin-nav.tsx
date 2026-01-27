@@ -2,12 +2,21 @@
 
 // ============================================================================
 // Admin Navigation Component
+// Navigation for ADMIN role only
 // ============================================================================
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
-import { Users, Building2, BarChart3, LayoutDashboard, LogOut } from 'lucide-react'
+import { 
+  Users, 
+  Building2, 
+  BarChart3, 
+  LayoutDashboard, 
+  LogOut, 
+  MapPin, 
+  CreditCard,
+} from 'lucide-react'
 import { ADMIN_ROUTES } from '@/lib/constants'
 import type { UserWithRoles } from '@/lib/types'
 import { Badge } from '@/components/ui/badge'
@@ -22,7 +31,7 @@ interface AdminNavProps {
 
 const navItems = [
   {
-    title: 'Admin Dashboard',
+    title: 'Dashboard',
     href: ADMIN_ROUTES.DASHBOARD,
     icon: LayoutDashboard,
   },
@@ -35,6 +44,16 @@ const navItems = [
     title: 'Departments',
     href: ADMIN_ROUTES.DEPARTMENTS,
     icon: Building2,
+  },
+  {
+    title: 'Locations',
+    href: ADMIN_ROUTES.LOCATIONS,
+    icon: MapPin,
+  },
+  {
+    title: 'Subscriptions',
+    href: ADMIN_ROUTES.SUBSCRIPTIONS,
+    icon: CreditCard,
   },
   {
     title: 'Analytics',
@@ -54,7 +73,7 @@ export function AdminNav({ user }: AdminNavProps) {
         <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
           <Link href={ADMIN_ROUTES.ADMIN} className="flex items-center gap-2 font-semibold">
             <BarChart3 className="h-6 w-6" />
-            <span className="">Admin Panel</span>
+            <span>Admin Panel</span>
           </Link>
         </div>
 
@@ -63,11 +82,9 @@ export function AdminNav({ user }: AdminNavProps) {
           <p className="text-sm font-medium">{user.name || user.email}</p>
           <p className="text-xs text-muted-foreground">{user.email}</p>
           <div className="mt-2 flex flex-wrap gap-1">
-            {user.user_roles?.roles && (
-              <Badge variant="secondary" className="text-xs">
-                {user.user_roles.roles.name}
-              </Badge>
-            )}
+            <Badge variant="secondary" className="text-xs">
+              Admin
+            </Badge>
           </div>
         </div>
 
@@ -104,10 +121,8 @@ export function AdminNav({ user }: AdminNavProps) {
         <div className="mt-auto px-2 pb-4 space-y-2">
           <Separator className="mb-4" />
           
-          {/* Theme Toggle */}
           <ThemeToggle />
           
-          {/* Logout Button */}
           <Button
             variant="outline"
             size="sm"

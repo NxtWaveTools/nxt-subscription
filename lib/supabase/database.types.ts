@@ -7,8 +7,6 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "14.1"
   }
@@ -64,6 +62,7 @@ export type Database = {
           id: string
           is_active: boolean
           name: string
+          short_code: string
           updated_at: string
         }
         Insert: {
@@ -71,6 +70,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           name: string
+          short_code: string
           updated_at?: string
         }
         Update: {
@@ -78,6 +78,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           name?: string
+          short_code?: string
           updated_at?: string
         }
         Relationships: []
@@ -155,6 +156,36 @@ export type Database = {
           },
         ]
       }
+      locations: {
+        Row: {
+          address: string | null
+          created_at: string
+          id: string
+          is_active: boolean
+          location_type: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          location_type?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          location_type?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       poc_department_access: {
         Row: {
           created_at: string
@@ -195,6 +226,30 @@ export type Database = {
           },
         ]
       }
+      products: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       roles: {
         Row: {
           created_at: string
@@ -216,20 +271,293 @@ export type Database = {
         }
         Relationships: []
       }
+      subscription_approvals: {
+        Row: {
+          action: Database["public"]["Enums"]["approval_action"]
+          approver_id: string
+          comments: string | null
+          created_at: string
+          id: string
+          subscription_id: string
+        }
+        Insert: {
+          action: Database["public"]["Enums"]["approval_action"]
+          approver_id: string
+          comments?: string | null
+          created_at?: string
+          id?: string
+          subscription_id: string
+        }
+        Update: {
+          action?: Database["public"]["Enums"]["approval_action"]
+          approver_id?: string
+          comments?: string | null
+          created_at?: string
+          id?: string
+          subscription_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscription_approvals_approver_id_fkey"
+            columns: ["approver_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscription_approvals_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "subscriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subscription_files: {
+        Row: {
+          created_at: string
+          file_name: string
+          file_path: string
+          file_size: number
+          file_type: string | null
+          id: string
+          mime_type: string
+          original_filename: string | null
+          storage_path: string | null
+          subscription_id: string
+          uploaded_by: string
+        }
+        Insert: {
+          created_at?: string
+          file_name: string
+          file_path: string
+          file_size: number
+          file_type?: string | null
+          id?: string
+          mime_type: string
+          original_filename?: string | null
+          storage_path?: string | null
+          subscription_id: string
+          uploaded_by: string
+        }
+        Update: {
+          created_at?: string
+          file_name?: string
+          file_path?: string
+          file_size?: number
+          file_type?: string | null
+          id?: string
+          mime_type?: string
+          original_filename?: string | null
+          storage_path?: string | null
+          subscription_id?: string
+          uploaded_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscription_files_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "subscriptions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscription_files_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subscription_sequences: {
+        Row: {
+          created_at: string
+          department_id: string
+          fiscal_year: number
+          id: string
+          last_sequence_number: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          department_id: string
+          fiscal_year: number
+          id?: string
+          last_sequence_number?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          department_id?: string
+          fiscal_year?: number
+          id?: string
+          last_sequence_number?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscription_sequences_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "department_analytics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscription_sequences_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subscriptions: {
+        Row: {
+          accounting_status: string
+          amount: number
+          billing_frequency: Database["public"]["Enums"]["billing_frequency"]
+          budget_period: string | null
+          created_at: string
+          created_by: string
+          currency: string
+          department_id: string
+          end_date: string | null
+          equivalent_inr_amount: number | null
+          id: string
+          location_id: string | null
+          login_url: string | null
+          mandate_id: string | null
+          payment_status: Database["public"]["Enums"]["payment_status"]
+          payment_utr: string | null
+          poc_email: string | null
+          product_id: string | null
+          request_type: string
+          requester_remarks: string | null
+          start_date: string | null
+          status: Database["public"]["Enums"]["subscription_status"]
+          subscription_email: string | null
+          subscription_id: string
+          tool_name: string
+          updated_at: string
+          vendor_name: string
+          version: number
+        }
+        Insert: {
+          accounting_status?: string
+          amount: number
+          billing_frequency?: Database["public"]["Enums"]["billing_frequency"]
+          budget_period?: string | null
+          created_at?: string
+          created_by: string
+          currency?: string
+          department_id: string
+          end_date?: string | null
+          equivalent_inr_amount?: number | null
+          id?: string
+          location_id?: string | null
+          login_url?: string | null
+          mandate_id?: string | null
+          payment_status?: Database["public"]["Enums"]["payment_status"]
+          payment_utr?: string | null
+          poc_email?: string | null
+          product_id?: string | null
+          request_type?: string
+          requester_remarks?: string | null
+          start_date?: string | null
+          status?: Database["public"]["Enums"]["subscription_status"]
+          subscription_email?: string | null
+          subscription_id?: string
+          tool_name: string
+          updated_at?: string
+          vendor_name: string
+          version?: number
+        }
+        Update: {
+          accounting_status?: string
+          amount?: number
+          billing_frequency?: Database["public"]["Enums"]["billing_frequency"]
+          budget_period?: string | null
+          created_at?: string
+          created_by?: string
+          currency?: string
+          department_id?: string
+          end_date?: string | null
+          equivalent_inr_amount?: number | null
+          id?: string
+          location_id?: string | null
+          login_url?: string | null
+          mandate_id?: string | null
+          payment_status?: Database["public"]["Enums"]["payment_status"]
+          payment_utr?: string | null
+          poc_email?: string | null
+          product_id?: string | null
+          request_type?: string
+          requester_remarks?: string | null
+          start_date?: string | null
+          status?: Database["public"]["Enums"]["subscription_status"]
+          subscription_email?: string | null
+          subscription_id?: string
+          tool_name?: string
+          updated_at?: string
+          vendor_name?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscriptions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscriptions_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "department_analytics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscriptions_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscriptions_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscriptions_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
           role_id: string
+          updated_at: string
           user_id: string
         }
         Insert: {
           created_at?: string
           role_id: string
+          updated_at?: string
           user_id: string
         }
         Update: {
           created_at?: string
           role_id?: string
+          updated_at?: string
           user_id?: string
         }
         Relationships: [
@@ -243,7 +571,7 @@ export type Database = {
           {
             foreignKeyName: "user_roles_user_id_fkey"
             columns: ["user_id"]
-            isOneToOne: false
+            isOneToOne: true
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -255,7 +583,7 @@ export type Database = {
           email: string
           id: string
           is_active: boolean
-          name: string | null
+          name: string
           updated_at: string
         }
         Insert: {
@@ -263,7 +591,7 @@ export type Database = {
           email: string
           id?: string
           is_active?: boolean
-          name?: string | null
+          name: string
           updated_at?: string
         }
         Update: {
@@ -271,8 +599,32 @@ export type Database = {
           email?: string
           id?: string
           is_active?: boolean
-          name?: string | null
+          name?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      vendors: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -305,6 +657,11 @@ export type Database = {
         }
         Returns: string
       }
+      generate_short_code: { Args: { dept_name: string }; Returns: string }
+      generate_subscription_code: {
+        Args: { p_department_id: string }
+        Returns: string
+      }
       get_department_stats: {
         Args: never
         Returns: {
@@ -332,6 +689,7 @@ export type Database = {
           total_users: number
         }[]
       }
+      get_user_role_name: { Args: { user_uuid: string }; Returns: string }
       has_any_role: { Args: { role_names: string[] }; Returns: boolean }
       has_poc_access_to_department: {
         Args: { dept_id: string }
@@ -341,7 +699,15 @@ export type Database = {
       is_hod_of_department: { Args: { dept_id: string }; Returns: boolean }
     }
     Enums: {
-      [_ in never]: never
+      approval_action: "APPROVED" | "REJECTED"
+      billing_frequency: "MONTHLY" | "QUARTERLY" | "YEARLY" | "USAGE_BASED"
+      payment_status: "PAID" | "IN_PROGRESS" | "DECLINED"
+      subscription_status:
+        | "PENDING"
+        | "ACTIVE"
+        | "REJECTED"
+        | "EXPIRED"
+        | "CANCELLED"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -468,6 +834,17 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      approval_action: ["APPROVED", "REJECTED"],
+      billing_frequency: ["MONTHLY", "QUARTERLY", "YEARLY", "USAGE_BASED"],
+      payment_status: ["PAID", "IN_PROGRESS", "DECLINED"],
+      subscription_status: [
+        "PENDING",
+        "ACTIVE",
+        "REJECTED",
+        "EXPIRED",
+        "CANCELLED",
+      ],
+    },
   },
 } as const

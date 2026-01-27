@@ -1,7 +1,15 @@
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
-import { AUTH_ERRORS, ROUTES, ADMIN_ROUTES } from '@/lib/constants'
+import { AUTH_ERRORS, ROUTES, ROLE_IDS } from '@/lib/constants'
 import { isUserActive } from '@/lib/auth/user'
+
+// Map role IDs to their dashboard paths
+const ROLE_DASHBOARDS: Record<string, string> = {
+  [ROLE_IDS.ADMIN]: '/admin',
+  [ROLE_IDS.FINANCE]: '/finance',
+  [ROLE_IDS.POC]: '/poc',
+  [ROLE_IDS.HOD]: '/hod',
+}
 
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url)
@@ -55,19 +63,15 @@ export async function GET(request: Request) {
   // Check user role and redirect accordingly
   const { data: roleData } = await adminClient
     .from('user_roles')
-    .select(`
-      roles (
-        name
-      )
-    `)
+    .select('role_id')
     .eq('user_id', user.id)
     .single()
 
-  // Redirect admins and finance users to admin panel
-  if (roleData?.roles?.name === 'ADMIN' || roleData?.roles?.name === 'FINANCE') {
-    return NextResponse.redirect(`${origin}${ADMIN_ROUTES.ADMIN}`)
+  // Redirect to role-specific dashboard
+  if (roleData && ROLE_DASHBOARDS[roleData.role_id]) {
+    return NextResponse.redirect(`${origin}${ROLE_DASHBOARDS[roleData.role_id]}`)
   }
 
-  // Users without admin/finance role go to unauthorized page
+  // Users without a valid role go to unauthorized page
   return NextResponse.redirect(`${origin}${ROUTES.UNAUTHORIZED}`)
 }
