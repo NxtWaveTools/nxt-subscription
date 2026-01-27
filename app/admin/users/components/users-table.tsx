@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { DataTable } from '@/components/ui/data-table'
 import { ManageRolesDialog } from './manage-roles-dialog'
+import { EditUserDialog } from './edit-user-dialog'
 import { deleteUser, toggleUserActive } from '../../actions/users'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
@@ -23,11 +24,13 @@ interface UsersTableProps {
 export function UsersTable({ users, roles }: UsersTableProps) {
   const router = useRouter()
   const [selectedUser, setSelectedUser] = useState<UserWithRoles | null>(null)
+  const [userToEdit, setUserToEdit] = useState<UserWithRoles | null>(null)
   const [userToDelete, setUserToDelete] = useState<UserWithRoles | null>(null)
   const [userToToggle, setUserToToggle] = useState<UserWithRoles | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isToggling, setIsToggling] = useState(false)
   const [manageRolesOpen, setManageRolesOpen] = useState(false)
+  const [editUserOpen, setEditUserOpen] = useState(false)
 
   const handleDelete = async () => {
     if (!userToDelete) return
@@ -112,6 +115,16 @@ export function UsersTable({ users, roles }: UsersTableProps) {
               variant="outline"
               size="sm"
               onClick={() => {
+                setUserToEdit(user)
+                setEditUserOpen(true)
+              }}
+            >
+              Edit
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
                 setSelectedUser(user)
                 setManageRolesOpen(true)
               }}
@@ -141,6 +154,17 @@ export function UsersTable({ users, roles }: UsersTableProps) {
   return (
     <>
       <DataTable columns={columns} data={users} />
+
+      {userToEdit && (
+        <EditUserDialog
+          open={editUserOpen}
+          onOpenChange={(open) => {
+            setEditUserOpen(open)
+            if (!open) setUserToEdit(null)
+          }}
+          user={userToEdit}
+        />
+      )}
 
       {selectedUser && (
         <ManageRolesDialog

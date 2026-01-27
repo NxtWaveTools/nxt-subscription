@@ -474,20 +474,38 @@ export async function bulkAssignRoleToUsers(
  */
 export async function updateUserProfile(
   userId: string,
-  data: { name?: string; email?: string }
+  data: { name?: string }
 ): Promise<ActionResponse> {
   try {
     // Permission check
-    await requireAdmin()
+    const currentUser = await requireAdmin()
+
+    // Validate name is provided
+    if (!data.name || data.name.trim() === '') {
+      return { success: false, error: 'Name is required' }
+    }
 
     const supabase = await createClient()
-    const { error } = await supabase.from('users').update(data).eq('id', userId)
+    const { error } = await supabase
+      .from('users')
+      .update({ name: data.name.trim() })
+      .eq('id', userId)
 
     if (error) {
       return { success: false, error: error.message }
     }
 
     revalidatePath(ADMIN_ROUTES.USERS)
+    
+    // Audit log
+    createAuditLog({
+      userId: currentUser.id,
+      action: AUDIT_ACTIONS.USER_UPDATE,
+      entityType: AUDIT_ENTITY_TYPES.USER,
+      entityId: userId,
+      changes: { name: data.name.trim() },
+    }).catch(console.error)
+    
     return { success: true }
   } catch (error) {
     return {
