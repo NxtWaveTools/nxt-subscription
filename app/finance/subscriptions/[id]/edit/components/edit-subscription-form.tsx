@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/select'
 import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
-import { updateSubscription } from '@/app/finance/actions/subscriptions'
+import { updateSubscription } from '@/app/admin/actions/subscriptions'
 import {
   REQUEST_TYPES,
   BILLING_FREQUENCY,
