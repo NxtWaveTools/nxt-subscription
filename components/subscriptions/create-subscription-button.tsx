@@ -29,7 +29,7 @@ import {
 } from '@/components/ui/select'
 import { Plus, CreditCard, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
-import { createSubscription } from '@/app/finance/actions/subscriptions'
+import { createSubscription } from '@/app/admin/actions/subscriptions'
 import { createVendorAction, createProductAction } from '@/app/admin/actions/master-data'
 import {
   REQUEST_TYPES,
@@ -47,19 +47,13 @@ interface SimpleDepartment {
   name: string
 }
 
-interface SimpleLocation {
-  id: string
-  name: string
-}
-
 interface CreateSubscriptionButtonProps {
   departments: SimpleDepartment[]
-  locations: SimpleLocation[]
   vendors: Vendor[]
   products: Product[]
 }
 
-export function CreateSubscriptionButton({ departments, locations, vendors: initialVendors, products: initialProducts }: CreateSubscriptionButtonProps) {
+export function CreateSubscriptionButton({ departments, vendors: initialVendors, products: initialProducts }: CreateSubscriptionButtonProps) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -82,7 +76,6 @@ export function CreateSubscriptionButton({ departments, locations, vendors: init
   const [vendorName, setVendorName] = useState('')
   const [productId, setProductId] = useState('')
   const [departmentId, setDepartmentId] = useState('')
-  const [locationId, setLocationId] = useState('')
   const [amount, setAmount] = useState('')
   const [equivalentInrAmount, setEquivalentInrAmount] = useState('')
   const [currency, setCurrency] = useState<Currency>('INR')
@@ -114,7 +107,6 @@ export function CreateSubscriptionButton({ departments, locations, vendors: init
     setVendorName('')
     setProductId('')
     setDepartmentId('')
-    setLocationId('')
     setAmount('')
     setEquivalentInrAmount('')
     setCurrency('INR')
@@ -181,7 +173,6 @@ export function CreateSubscriptionButton({ departments, locations, vendors: init
       vendor_name: vendorName,
       product_id: productId || null,
       department_id: departmentId,
-      location_id: locationId || null,
       amount: parseFloat(amount),
       equivalent_inr_amount: equivalentInrAmount ? parseFloat(equivalentInrAmount) : null,
       currency,
@@ -364,7 +355,7 @@ export function CreateSubscriptionButton({ departments, locations, vendors: init
             </div>
           </div>
 
-          {/* Department and Location */}
+          {/* Department */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="department">Department *</Label>
@@ -376,22 +367,6 @@ export function CreateSubscriptionButton({ departments, locations, vendors: init
                   {departments.map((dept) => (
                     <SelectItem key={dept.id} value={dept.id}>
                       {dept.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="location">Location *</Label>
-              <Select value={locationId} onValueChange={setLocationId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select location" />
-                </SelectTrigger>
-                <SelectContent>
-                  {locations.map((loc) => (
-                    <SelectItem key={loc.id} value={loc.id}>
-                      {loc.name}
                     </SelectItem>
                   ))}
                 </SelectContent>

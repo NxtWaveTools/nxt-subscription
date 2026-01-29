@@ -194,7 +194,7 @@ export default async function SubscriptionDetailPage({ params }: SubscriptionDet
 
               <Separator />
 
-              {/* Location & Department */}
+              {/* Department */}
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-1">
                   <p className="text-sm text-muted-foreground flex items-center gap-1">
@@ -203,15 +203,6 @@ export default async function SubscriptionDetailPage({ params }: SubscriptionDet
                   </p>
                   <p className="font-medium">{subscription.departments?.name || '—'}</p>
                 </div>
-                {subscription.locations && (
-                  <div className="space-y-1">
-                    <p className="text-sm text-muted-foreground flex items-center gap-1">
-                      <MapPin className="h-3 w-3" />
-                      Location
-                    </p>
-                    <p className="font-medium">{subscription.locations.name}</p>
-                  </div>
-                )}
               </div>
 
               <Separator />

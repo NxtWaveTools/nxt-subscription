@@ -31,7 +31,6 @@ export interface SubscriptionFilters {
   billingFrequency?: BillingFrequency
   requestType?: RequestType
   departmentId?: string
-  locationId?: string
   createdBy?: string
   startDateFrom?: string
   startDateTo?: string
@@ -78,7 +77,6 @@ export async function fetchSubscriptions(
       vendor_name,
       product_id,
       department_id,
-      location_id,
       amount,
       equivalent_inr_amount,
       currency,
@@ -102,11 +100,6 @@ export async function fetchSubscriptions(
       departments:department_id (
         id,
         name
-      ),
-      locations:location_id (
-        id,
-        name,
-        location_type
       ),
       products:product_id (
         id,
@@ -153,9 +146,6 @@ export async function fetchSubscriptions(
   // Apply relationship filters
   if (filters.departmentId) {
     query = query.eq('department_id', filters.departmentId)
-  }
-  if (filters.locationId) {
-    query = query.eq('location_id', filters.locationId)
   }
   if (filters.createdBy) {
     query = query.eq('created_by', filters.createdBy)
@@ -211,7 +201,6 @@ export async function fetchSubscriptionById(
       vendor_name,
       product_id,
       department_id,
-      location_id,
       amount,
       equivalent_inr_amount,
       currency,
@@ -235,11 +224,6 @@ export async function fetchSubscriptionById(
       departments:department_id (
         id,
         name
-      ),
-      locations:location_id (
-        id,
-        name,
-        location_type
       ),
       creator:created_by (
         id,
@@ -365,7 +349,6 @@ export async function fetchPendingSubscriptionsForPOC(
       vendor_name,
       product_id,
       department_id,
-      location_id,
       amount,
       equivalent_inr_amount,
       currency,
@@ -389,11 +372,6 @@ export async function fetchPendingSubscriptionsForPOC(
       departments:department_id (
         id,
         name
-      ),
-      locations:location_id (
-        id,
-        name,
-        location_type
       ),
       products:product_id (
         id,
@@ -477,7 +455,6 @@ export async function fetchSubscriptionsForExport(
       vendor_name,
       product_id,
       department_id,
-      location_id,
       amount,
       equivalent_inr_amount,
       currency,
@@ -501,11 +478,6 @@ export async function fetchSubscriptionsForExport(
       departments:department_id (
         id,
         name
-      ),
-      locations:location_id (
-        id,
-        name,
-        location_type
       ),
       creator:created_by (
         id,

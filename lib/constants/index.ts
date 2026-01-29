@@ -38,26 +38,23 @@ export const ADMIN_ROUTES = {
   DASHBOARD: '/admin/dashboard',
   USERS: '/admin/users',
   DEPARTMENTS: '/admin/departments',
-  LOCATIONS: '/admin/locations',
   SUBSCRIPTIONS: '/admin/subscriptions',
   ANALYTICS: '/admin/analytics',
 } as const
 
 // Finance routes (FINANCE role)
 export const FINANCE_ROUTES = {
-  DASHBOARD: '/finance',
   SUBSCRIPTIONS: '/finance/subscriptions',
 } as const
 
 // POC routes (POC role)
 export const POC_ROUTES = {
-  DASHBOARD: '/poc',
-  APPROVALS: '/poc/approvals',
+  SUBSCRIPTIONS: '/poc/subscriptions',
 } as const
 
 // HOD routes (HOD role)
 export const HOD_ROUTES = {
-  DASHBOARD: '/hod',
+  SUBSCRIPTIONS: '/hod/subscriptions',
 } as const
 
 // Bulk operation limits
@@ -170,15 +167,6 @@ export const CURRENCIES = {
 
 export type Currency = typeof CURRENCIES[keyof typeof CURRENCIES]
 
-// Location types
-export const LOCATION_TYPES = {
-  OFFICE: 'OFFICE',
-  NIAT: 'NIAT',
-  OTHER: 'OTHER',
-} as const
-
-export type LocationType = typeof LOCATION_TYPES[keyof typeof LOCATION_TYPES]
-
 // File types for subscription attachments
 export const FILE_TYPES = {
   PROOF_OF_PAYMENT: 'PROOF_OF_PAYMENT',
@@ -250,6 +238,5 @@ export const NOTIFICATION_RETENTION_DAYS = 10 as const
 export const SUBSCRIPTION_ROUTES = {
   SUBSCRIPTIONS: '/admin/subscriptions',
   APPROVALS: '/admin/approvals',
-  LOCATIONS: '/admin/locations',
   ANALYTICS: '/admin/subscriptions/analytics',
 } as const

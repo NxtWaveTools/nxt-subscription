@@ -210,13 +210,6 @@ export default async function SubscriptionDetailPage({ params }: SubscriptionDet
                     <p className="font-medium">{subscription.departments?.name || 'Unknown'}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4 text-muted-foreground" />
-                  <div>
-                    <Label>Location</Label>
-                    <p className="font-medium">{subscription.locations?.name || '—'}</p>
-                  </div>
-                </div>
               </div>
 
               <Separator />

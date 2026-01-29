@@ -8,7 +8,6 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { 
-  LayoutDashboard, 
   LogOut, 
   CreditCard,
   Wallet
@@ -27,11 +26,6 @@ interface FinanceNavProps {
 
 const navItems = [
   {
-    title: 'Dashboard',
-    href: FINANCE_ROUTES.DASHBOARD,
-    icon: LayoutDashboard,
-  },
-  {
     title: 'Subscriptions',
     href: FINANCE_ROUTES.SUBSCRIPTIONS,
     icon: CreditCard,
@@ -47,7 +41,7 @@ export function FinanceNav({ user }: FinanceNavProps) {
       <div className="flex h-full flex-col gap-2">
         {/* Header */}
         <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
-          <Link href={FINANCE_ROUTES.DASHBOARD} className="flex items-center gap-2 font-semibold">
+          <Link href={FINANCE_ROUTES.SUBSCRIPTIONS} className="flex items-center gap-2 font-semibold">
             <Wallet className="h-6 w-6" />
             <span>Finance Portal</span>
           </Link>

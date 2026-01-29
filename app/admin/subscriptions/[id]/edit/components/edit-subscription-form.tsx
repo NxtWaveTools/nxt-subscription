@@ -43,21 +43,14 @@ interface SimpleDepartment {
   name: string
 }
 
-interface SimpleLocation {
-  id: string
-  name: string
-}
-
 interface EditSubscriptionFormProps {
   subscription: SubscriptionWithRelations
   departments: SimpleDepartment[]
-  locations: SimpleLocation[]
 }
 
 export function EditSubscriptionForm({ 
   subscription, 
-  departments, 
-  locations 
+  departments
 }: EditSubscriptionFormProps) {
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -67,7 +60,6 @@ export function EditSubscriptionForm({
   const [toolName, setToolName] = useState(subscription.tool_name)
   const [vendorName, setVendorName] = useState(subscription.vendor_name)
   const [departmentId, setDepartmentId] = useState(subscription.department_id)
-  const [locationId, setLocationId] = useState(subscription.location_id || '')
   const [amount, setAmount] = useState(subscription.amount.toString())
   const [equivalentInrAmount, setEquivalentInrAmount] = useState(subscription.equivalent_inr_amount?.toString() || '')
   const [currency, setCurrency] = useState<Currency>(subscription.currency as Currency)
@@ -99,7 +91,6 @@ export function EditSubscriptionForm({
       tool_name: toolName,
       vendor_name: vendorName,
       department_id: departmentId,
-      location_id: locationId || null,
       amount: parseFloat(amount),
       equivalent_inr_amount: equivalentInrAmount ? parseFloat(equivalentInrAmount) : null,
       currency,
@@ -214,40 +205,21 @@ export function EditSubscriptionForm({
         </div>
       </div>
 
-      {/* Department and Location */}
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="department">Department *</Label>
-          <Select value={departmentId} onValueChange={setDepartmentId}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select department" />
-            </SelectTrigger>
-            <SelectContent>
-              {departments.map((dept) => (
-                <SelectItem key={dept.id} value={dept.id}>
-                  {dept.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="location">Location (Optional)</Label>
-          <Select value={locationId} onValueChange={setLocationId}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select location" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="">None</SelectItem>
-              {locations.map((loc) => (
-                <SelectItem key={loc.id} value={loc.id}>
-                  {loc.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+      {/* Department */}
+      <div className="space-y-2">
+        <Label htmlFor="department">Department *</Label>
+        <Select value={departmentId} onValueChange={setDepartmentId}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select department" />
+          </SelectTrigger>
+          <SelectContent>
+            {departments.map((dept) => (
+              <SelectItem key={dept.id} value={dept.id}>
+                {dept.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Payment Status and Accounting Status */}

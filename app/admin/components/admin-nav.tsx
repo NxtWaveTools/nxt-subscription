@@ -14,7 +14,6 @@ import {
   BarChart3, 
   LayoutDashboard, 
   LogOut, 
-  MapPin, 
   CreditCard,
 } from 'lucide-react'
 import { ADMIN_ROUTES } from '@/lib/constants'
@@ -44,11 +43,6 @@ const navItems = [
     title: 'Departments',
     href: ADMIN_ROUTES.DEPARTMENTS,
     icon: Building2,
-  },
-  {
-    title: 'Locations',
-    href: ADMIN_ROUTES.LOCATIONS,
-    icon: MapPin,
   },
   {
     title: 'Subscriptions',

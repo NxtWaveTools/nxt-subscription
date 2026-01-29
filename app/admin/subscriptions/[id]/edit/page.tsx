@@ -9,7 +9,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Pencil } from 'lucide-react'
 import { fetchSubscriptionById, fetchActiveDepartments } from '@/lib/data-access'
-import { fetchActiveLocations } from '@/lib/data-access/locations'
 import { ADMIN_ROUTES } from '@/lib/constants'
 import { EditSubscriptionForm } from './components/edit-subscription-form'
 
@@ -21,10 +20,9 @@ export default async function EditSubscriptionPage({ params }: EditSubscriptionP
   const { id } = await params
 
   // Fetch subscription and dropdown data
-  const [subscription, departments, locations] = await Promise.all([
+  const [subscription, departments] = await Promise.all([
     fetchSubscriptionById(id),
     fetchActiveDepartments(),
-    fetchActiveLocations(),
   ])
 
   if (!subscription) {
@@ -33,7 +31,6 @@ export default async function EditSubscriptionPage({ params }: EditSubscriptionP
 
   // Map to simpler format for dropdowns
   const simpleDepartments = departments.map((d) => ({ id: d.id, name: d.name }))
-  const simpleLocations = locations.map((l) => ({ id: l.id, name: l.name }))
 
   return (
     <div className="space-y-6">
@@ -67,7 +64,6 @@ export default async function EditSubscriptionPage({ params }: EditSubscriptionP
           <EditSubscriptionForm
             subscription={subscription}
             departments={simpleDepartments}
-            locations={simpleLocations}
           />
         </CardContent>
       </Card>

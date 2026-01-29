@@ -8,7 +8,6 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { 
-  LayoutDashboard, 
   LogOut, 
   Eye,
 } from 'lucide-react'
@@ -26,9 +25,9 @@ interface HODNavProps {
 
 const navItems = [
   {
-    title: 'Dashboard',
-    href: HOD_ROUTES.DASHBOARD,
-    icon: LayoutDashboard,
+    title: 'Subscriptions',
+    href: HOD_ROUTES.SUBSCRIPTIONS,
+    icon: Eye,
   },
 ]
 
@@ -41,7 +40,7 @@ export function HODNav({ user }: HODNavProps) {
       <div className="flex h-full flex-col gap-2">
         {/* Header */}
         <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
-          <Link href={HOD_ROUTES.DASHBOARD} className="flex items-center gap-2 font-semibold">
+          <Link href={HOD_ROUTES.SUBSCRIPTIONS} className="flex items-center gap-2 font-semibold">
             <Eye className="h-6 w-6" />
             <span>HOD Portal</span>
           </Link>

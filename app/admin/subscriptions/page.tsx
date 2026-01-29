@@ -7,13 +7,13 @@ import { Suspense } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
-import { SubscriptionsTable } from './components/subscriptions-table'
-import { SubscriptionsFilters } from './components/subscriptions-filters'
-import { CreateSubscriptionButton } from './components/create-subscription-button'
+import { SubscriptionsTable } from '@/components/subscriptions/subscriptions-table'
+import { SubscriptionsFilters } from '@/components/subscriptions/subscriptions-filters'
+import { CreateSubscriptionButton } from '@/components/subscriptions/create-subscription-button'
 import { fetchSubscriptions, getSubscriptionCountsByStatus, fetchActiveDepartments, fetchActiveVendors, fetchActiveProducts } from '@/lib/data-access'
-import { fetchActiveLocations } from '@/lib/data-access/locations'
 import { validatePageParams, calculateTotalPages, clampPage } from '@/lib/utils/pagination'
 import {
+  ADMIN_ROUTES,
   SUBSCRIPTION_STATUS,
   PAYMENT_STATUS,
   ACCOUNTING_STATUS,
@@ -35,7 +35,6 @@ interface SubscriptionsPageProps {
     billing_frequency?: string
     request_type?: string
     department_id?: string
-    location_id?: string
     page?: string
     limit?: string
   }>
@@ -58,10 +57,9 @@ export default async function SubscriptionsPage({ searchParams }: SubscriptionsP
   const billingFrequency = isValidBillingFrequency(params.billing_frequency) ? params.billing_frequency : undefined
   const requestType = isValidRequestType(params.request_type) ? params.request_type : undefined
   const departmentId = params.department_id || undefined
-  const locationId = params.location_id || undefined
 
   // Fetch data in parallel
-  const [{ subscriptions, totalCount }, statusCounts, departments, locations, vendors, products] = await Promise.all([
+  const [{ subscriptions, totalCount }, statusCounts, departments, vendors, products] = await Promise.all([
     fetchSubscriptions(
       {
         search,
@@ -71,13 +69,11 @@ export default async function SubscriptionsPage({ searchParams }: SubscriptionsP
         billingFrequency,
         requestType,
         departmentId,
-        locationId,
       },
       { page, limit, offset }
     ),
     getSubscriptionCountsByStatus(),
     fetchActiveDepartments(),
-    fetchActiveLocations(),
     fetchActiveVendors(),
     fetchActiveProducts(),
   ])
@@ -94,7 +90,7 @@ export default async function SubscriptionsPage({ searchParams }: SubscriptionsP
             Manage software subscriptions and approval workflows
           </p>
         </div>
-        <CreateSubscriptionButton departments={departments} locations={locations} vendors={vendors} products={products} />
+        <CreateSubscriptionButton departments={departments} vendors={vendors} products={products} />
       </div>
 
       {/* Status Summary Cards */}
@@ -136,7 +132,7 @@ export default async function SubscriptionsPage({ searchParams }: SubscriptionsP
         </CardHeader>
         <CardContent>
           <Suspense fallback={<Skeleton className="h-96" />}>
-            <SubscriptionsFilters departments={departments} locations={locations} />
+            <SubscriptionsFilters departments={departments} baseRoute={ADMIN_ROUTES.SUBSCRIPTIONS} />
             <div className="mt-4">
               {subscriptions.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -153,6 +149,7 @@ export default async function SubscriptionsPage({ searchParams }: SubscriptionsP
                   totalCount={totalCount}
                   pageSize={limit}
                   currentPage={currentPage}
+                  baseRoute={ADMIN_ROUTES.SUBSCRIPTIONS}
                 />
               )}
             </div>

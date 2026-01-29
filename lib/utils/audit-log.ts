@@ -54,13 +54,6 @@ export const AUDIT_ACTIONS = {
   BULK_SUBSCRIPTION_APPROVE: 'bulk.subscription.approve',
   EXPORT_SUBSCRIPTIONS: 'export.subscriptions',
   
-  // Location actions
-  LOCATION_CREATE: 'location.create',
-  LOCATION_UPDATE: 'location.update',
-  LOCATION_DELETE: 'location.delete',
-  LOCATION_ACTIVATE: 'location.activate',
-  LOCATION_DEACTIVATE: 'location.deactivate',
-  
   // File actions
   FILE_UPLOAD: 'file.upload',
   FILE_DELETE: 'file.delete',
@@ -92,7 +85,6 @@ export const AUDIT_ENTITY_TYPES = {
   POC_DEPARTMENT: 'poc_department',
   EXPORT: 'export',
   SUBSCRIPTION: 'subscription',
-  LOCATION: 'location',
   SUBSCRIPTION_FILE: 'subscription_file',
   SUBSCRIPTION_APPROVAL: 'subscription_approval',
   PAYMENT_CYCLE: 'payment_cycle',

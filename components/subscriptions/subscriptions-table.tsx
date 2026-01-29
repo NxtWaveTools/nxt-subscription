@@ -16,10 +16,10 @@ import {
   Eye,
   Pencil,
   Trash2,
+  CheckCircle2,
   XCircle,
   CreditCard,
   Building2,
-  MapPin,
   Calendar,
 } from 'lucide-react'
 import {
@@ -32,8 +32,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { toast } from 'sonner'
-import { cancelSubscription, deleteSubscription } from '@/app/finance/actions/subscriptions'
-import { FINANCE_ROUTES } from '@/lib/constants'
+import { cancelSubscription, deleteSubscription } from '@/app/admin/actions/subscriptions'
 import type { SubscriptionWithRelations } from '@/lib/types'
 
 interface SubscriptionsTableProps {
@@ -41,6 +40,8 @@ interface SubscriptionsTableProps {
   totalCount: number
   pageSize: number
   currentPage: number
+  baseRoute: string // e.g., '/admin/subscriptions', '/finance/subscriptions', etc.
+  readOnly?: boolean // If true, hide edit/delete/cancel actions (for HOD view-only access)
 }
 
 export function SubscriptionsTable({
@@ -48,6 +49,8 @@ export function SubscriptionsTable({
   totalCount,
   pageSize,
   currentPage,
+  baseRoute,
+  readOnly = false,
 }: SubscriptionsTableProps) {
   const router = useRouter()
   const [subscriptionToDelete, setSubscriptionToDelete] = useState<SubscriptionWithRelations | null>(null)
@@ -165,7 +168,7 @@ export function SubscriptionsTable({
       render: (subscription) => (
         <div className="min-w-[120px]">
           <Link
-            href={`${FINANCE_ROUTES.SUBSCRIPTIONS}/${subscription.id}`}
+            href={`${baseRoute}/${subscription.id}`}
             className="font-medium font-mono text-sm hover:underline"
           >
             {subscription.subscription_id || '—'}
@@ -190,19 +193,13 @@ export function SubscriptionsTable({
     },
     {
       key: 'department',
-      label: 'Department / Location',
+      label: 'Department',
       render: (subscription) => (
         <div className="min-w-[150px]">
           <div className="flex items-center gap-1 text-sm">
             <Building2 className="h-3 w-3 text-muted-foreground" />
             {subscription.departments?.name || 'Unknown'}
           </div>
-          {subscription.locations && (
-            <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-              <MapPin className="h-3 w-3" />
-              {subscription.locations.name}
-            </div>
-          )}
         </div>
       ),
     },
@@ -256,7 +253,7 @@ export function SubscriptionsTable({
         </div>
       ),
     },
-    {
+    ...(readOnly ? [] : [{
       key: 'actions',
       label: '',
       render: (subscription) => (
@@ -271,13 +268,13 @@ export function SubscriptionsTable({
             <DropdownMenuLabel>Actions</DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
-              <Link href={`${FINANCE_ROUTES.SUBSCRIPTIONS}/${subscription.id}`}>
+              <Link href={`${baseRoute}/${subscription.id}`}>
                 <Eye className="h-4 w-4 mr-2" />
                 View Details
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <Link href={`${FINANCE_ROUTES.SUBSCRIPTIONS}/${subscription.id}/edit`}>
+              <Link href={`${baseRoute}/${subscription.id}/edit`}>
                 <Pencil className="h-4 w-4 mr-2" />
                 Edit
               </Link>
@@ -304,7 +301,7 @@ export function SubscriptionsTable({
           </DropdownMenuContent>
         </DropdownMenu>
       ),
-    },
+    }] as Column<SubscriptionWithRelations>[]),
   ]
 
   return (

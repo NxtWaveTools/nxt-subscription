@@ -115,34 +115,6 @@ export interface RoleCounts {
 }
 
 // ============================================================================
-// Location Types
-// ============================================================================
-
-export interface Location {
-  id: string
-  name: string
-  location_type: 'OFFICE' | 'NIAT' | 'OTHER'
-  address: string | null
-  is_active: boolean
-  created_at: string
-  updated_at: string
-}
-
-export interface LocationInsert {
-  name: string
-  location_type: 'OFFICE' | 'NIAT' | 'OTHER'
-  address?: string | null
-  is_active?: boolean
-}
-
-export interface LocationUpdate {
-  name?: string
-  location_type?: 'OFFICE' | 'NIAT' | 'OTHER'
-  address?: string | null
-  is_active?: boolean
-}
-
-// ============================================================================
 // Vendor Types
 // ============================================================================
 
@@ -198,7 +170,6 @@ export interface Subscription {
   vendor_name: string
   product_id: string | null // Foreign key to products table
   department_id: string
-  location_id: string | null
   amount: number
   equivalent_inr_amount: number | null // Equivalent amount in INR
   currency: 'INR' | 'CHF' | 'USD' // Updated currency options
@@ -227,7 +198,6 @@ export interface SubscriptionInsert {
   vendor_name: string
   product_id?: string | null // Foreign key to products table
   department_id: string
-  location_id?: string | null
   amount: number
   equivalent_inr_amount?: number | null // Equivalent amount in INR
   currency?: 'INR' | 'CHF' | 'USD' // Updated currency options
@@ -251,7 +221,6 @@ export interface SubscriptionUpdate {
   vendor_name?: string
   product_id?: string | null // Foreign key to products table
   department_id?: string
-  location_id?: string | null
   amount?: number
   equivalent_inr_amount?: number | null // Equivalent amount in INR
   currency?: 'INR' | 'CHF' | 'USD' // Updated currency options
@@ -278,11 +247,6 @@ export interface SubscriptionWithRelations extends Subscription {
     id: string
     name: string
   }
-  locations: {
-    id: string
-    name: string
-    location_type: string
-  } | null
   vendors: {
     id: string
     name: string

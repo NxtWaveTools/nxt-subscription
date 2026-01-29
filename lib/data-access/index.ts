@@ -33,18 +33,6 @@ export {
 } from './analytics'
 
 export {
-  fetchLocations,
-  fetchLocationById,
-  searchLocations,
-  fetchActiveLocations,
-  isLocationUsedInSubscriptions,
-  fetchLocationsForExport,
-  type LocationFilters,
-  type LocationPaginationOptions,
-  type LocationListResponse,
-} from './locations'
-
-export {
   fetchSubscriptions,
   fetchSubscriptionById,
   fetchSubscriptionFiles,

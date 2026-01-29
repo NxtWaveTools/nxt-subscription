@@ -6,7 +6,6 @@ import { z } from 'zod'
 import {
   ROLES,
   PAGINATION,
-  LOCATION_TYPES,
   REQUEST_TYPES,
   SUBSCRIPTION_STATUS,
   PAYMENT_STATUS,
@@ -338,63 +337,6 @@ export const apiSchemas = {
 }
 
 // ============================================================================
-// Location Validation Schemas
-// ============================================================================
-
-const locationTypeValues = [
-  LOCATION_TYPES.OFFICE,
-  LOCATION_TYPES.NIAT,
-  LOCATION_TYPES.OTHER,
-] as const
-
-export const locationSchemas = {
-  /**
-   * Create location schema
-   */
-  create: z.object({
-    name: z.string().min(1, 'Location name is required').max(200, 'Name is too long'),
-    location_type: z.enum(locationTypeValues, {
-      message: 'Invalid location type',
-    }),
-    address: z.string().max(500, 'Address is too long').optional().nullable(),
-  }),
-
-  /**
-   * Update location schema
-   */
-  update: z.object({
-    name: z.string().min(1, 'Location name is required').max(200, 'Name is too long').optional(),
-    location_type: z.enum(locationTypeValues, {
-      message: 'Invalid location type',
-    }).optional(),
-    address: z.string().max(500, 'Address is too long').optional().nullable(),
-    is_active: z.boolean().optional(),
-  }),
-
-  /**
-   * Location ID validation
-   */
-  locationId: z.string().uuid('Invalid location ID'),
-
-  /**
-   * Search/filter locations schema
-   */
-  filter: z.object({
-    search: z.string().optional(),
-    location_type: z.enum(locationTypeValues).optional(),
-    is_active: z.boolean().optional(),
-  }),
-
-  /**
-   * Bulk toggle locations active status
-   */
-  bulkToggle: z.object({
-    location_ids: z.array(z.string().uuid()).min(1).max(100, 'Cannot exceed 100 locations'),
-    is_active: z.boolean(),
-  }),
-}
-
-// ============================================================================
 // Subscription Validation Schemas
 // ============================================================================
 
@@ -438,7 +380,6 @@ export const subscriptionSchemas = {
     vendor_name: z.string().min(1, 'Vendor name is required').max(200, 'Vendor name is too long'),
     product_id: z.string().uuid('Invalid product ID').optional().nullable(),
     department_id: z.string().uuid('Invalid department ID'),
-    location_id: z.string().uuid('Invalid location ID').nullable(),
     amount: z.number().positive('Amount must be positive'),
     equivalent_inr_amount: z.number().positive('Equivalent INR amount must be positive').optional().nullable(),
     currency: z.enum(currencyValues, {
@@ -483,7 +424,6 @@ export const subscriptionSchemas = {
     vendor_name: z.string().min(1).max(200).optional(),
     product_id: z.string().uuid().optional().nullable(),
     department_id: z.string().uuid().optional(),
-    location_id: z.string().uuid().optional().nullable(),
     amount: z.number().positive().optional(),
     equivalent_inr_amount: z.number().positive().optional().nullable(),
     currency: z.enum(currencyValues).optional(),
@@ -552,7 +492,6 @@ export const subscriptionSchemas = {
   filter: z.object({
     search: z.string().optional(),
     department_id: z.string().uuid().optional(),
-    location_id: z.string().uuid().optional(),
     product_id: z.string().uuid().optional(),
     status: z.enum(subscriptionStatusValues).optional(),
     payment_status: z.enum(paymentStatusValues).optional(),

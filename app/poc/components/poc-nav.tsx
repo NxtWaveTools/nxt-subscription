@@ -8,7 +8,6 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { 
-  LayoutDashboard, 
   LogOut, 
   ClipboardCheck,
 } from 'lucide-react'
@@ -26,13 +25,8 @@ interface POCNavProps {
 
 const navItems = [
   {
-    title: 'Dashboard',
-    href: POC_ROUTES.DASHBOARD,
-    icon: LayoutDashboard,
-  },
-  {
-    title: 'Pending Approvals',
-    href: POC_ROUTES.APPROVALS,
+    title: 'Subscriptions',
+    href: POC_ROUTES.SUBSCRIPTIONS,
     icon: ClipboardCheck,
   },
 ]
@@ -46,7 +40,7 @@ export function POCNav({ user }: POCNavProps) {
       <div className="flex h-full flex-col gap-2">
         {/* Header */}
         <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
-          <Link href={POC_ROUTES.DASHBOARD} className="flex items-center gap-2 font-semibold">
+          <Link href={POC_ROUTES.SUBSCRIPTIONS} className="flex items-center gap-2 font-semibold">
             <ClipboardCheck className="h-6 w-6" />
             <span>POC Portal</span>
           </Link>

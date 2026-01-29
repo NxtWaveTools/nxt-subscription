@@ -158,36 +158,6 @@ export type Database = {
           },
         ]
       }
-      locations: {
-        Row: {
-          address: string | null
-          created_at: string
-          id: string
-          is_active: boolean
-          location_type: string
-          name: string
-          updated_at: string
-        }
-        Insert: {
-          address?: string | null
-          created_at?: string
-          id?: string
-          is_active?: boolean
-          location_type?: string
-          name: string
-          updated_at?: string
-        }
-        Update: {
-          address?: string | null
-          created_at?: string
-          id?: string
-          is_active?: boolean
-          location_type?: string
-          name?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
       poc_department_access: {
         Row: {
           created_at: string
@@ -528,7 +498,6 @@ export type Database = {
           end_date: string | null
           equivalent_inr_amount: number | null
           id: string
-          location_id: string | null
           login_url: string | null
           mandate_id: string | null
           payment_status: Database["public"]["Enums"]["payment_status"]
@@ -558,7 +527,6 @@ export type Database = {
           end_date?: string | null
           equivalent_inr_amount?: number | null
           id?: string
-          location_id?: string | null
           login_url?: string | null
           mandate_id?: string | null
           payment_status?: Database["public"]["Enums"]["payment_status"]
@@ -588,7 +556,6 @@ export type Database = {
           end_date?: string | null
           equivalent_inr_amount?: number | null
           id?: string
-          location_id?: string | null
           login_url?: string | null
           mandate_id?: string | null
           payment_status?: Database["public"]["Enums"]["payment_status"]
@@ -626,13 +593,6 @@ export type Database = {
             columns: ["department_id"]
             isOneToOne: false
             referencedRelation: "departments"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "subscriptions_location_id_fkey"
-            columns: ["location_id"]
-            isOneToOne: false
-            referencedRelation: "locations"
             referencedColumns: ["id"]
           },
           {
@@ -748,6 +708,10 @@ export type Database = {
       }
     }
     Functions: {
+      can_access_subscription_file: {
+        Args: { subscription_id: string }
+        Returns: boolean
+      }
       create_audit_log: {
         Args: {
           p_action: string
@@ -766,7 +730,7 @@ export type Database = {
         Returns: string
       }
       get_department_stats: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           active_users: number
           department_id: string
@@ -777,14 +741,14 @@ export type Database = {
         }[]
       }
       get_role_distribution: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           role_name: string
           user_count: number
         }[]
       }
       get_user_activity_stats: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           active_percentage: number
           active_users: number

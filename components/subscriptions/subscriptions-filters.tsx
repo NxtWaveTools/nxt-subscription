@@ -21,7 +21,6 @@ import {
   SUBSCRIPTION_STATUS,
   PAYMENT_STATUS,
   BILLING_FREQUENCY,
-  ADMIN_ROUTES,
 } from '@/lib/constants'
 // Simplified types for dropdown data
 interface SimpleDepartment {
@@ -29,17 +28,12 @@ interface SimpleDepartment {
   name: string
 }
 
-interface SimpleLocation {
-  id: string
-  name: string
-}
-
 interface SubscriptionsFiltersProps {
   departments: SimpleDepartment[]
-  locations: SimpleLocation[]
+  baseRoute: string // e.g., '/admin/subscriptions', '/finance/subscriptions', etc.
 }
 
-export function SubscriptionsFilters({ departments, locations }: SubscriptionsFiltersProps) {
+export function SubscriptionsFilters({ departments, baseRoute }: SubscriptionsFiltersProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -49,7 +43,6 @@ export function SubscriptionsFilters({ departments, locations }: SubscriptionsFi
   const paymentStatusParam = searchParams.get('payment_status') || ''
   const billingFrequencyParam = searchParams.get('billing_frequency') || ''
   const departmentIdParam = searchParams.get('department_id') || ''
-  const locationIdParam = searchParams.get('location_id') || ''
 
   // Local state for search input (for debouncing)
   const [searchValue, setSearchValue] = useState(searchParam)
@@ -91,7 +84,7 @@ export function SubscriptionsFilters({ departments, locations }: SubscriptionsFi
 
   const handleClearFilters = () => {
     setSearchValue('')
-    router.push(ADMIN_ROUTES.SUBSCRIPTIONS)
+    router.push(baseRoute)
   }
 
   const hasFilters =
@@ -99,8 +92,7 @@ export function SubscriptionsFilters({ departments, locations }: SubscriptionsFi
     statusParam ||
     paymentStatusParam ||
     billingFrequencyParam ||
-    departmentIdParam ||
-    locationIdParam
+    departmentIdParam
 
   // Human-readable labels for enums
   const statusLabels: Record<string, string> = {
@@ -207,24 +199,6 @@ export function SubscriptionsFilters({ departments, locations }: SubscriptionsFi
           {departments.map((dept) => (
             <SelectItem key={dept.id} value={dept.id}>
               {dept.name}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-
-      {/* Location filter */}
-      <Select
-        value={locationIdParam || 'all'}
-        onValueChange={(value) => updateURLParams('location_id', value)}
-      >
-        <SelectTrigger className="w-[180px]">
-          <SelectValue placeholder="Location" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">All Locations</SelectItem>
-          {locations.map((loc) => (
-            <SelectItem key={loc.id} value={loc.id}>
-              {loc.name}
             </SelectItem>
           ))}
         </SelectContent>

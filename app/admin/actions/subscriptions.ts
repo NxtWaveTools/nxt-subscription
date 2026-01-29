@@ -157,23 +157,6 @@ export async function createSubscription(
       }
     }
 
-    // Verify location exists if provided
-    if (validated.location_id) {
-      const { data: location, error: locError } = await supabase
-        .from('locations')
-        .select('id, name')
-        .eq('id', validated.location_id)
-        .eq('is_active', true)
-        .maybeSingle()
-
-      if (locError || !location) {
-        return {
-          success: false,
-          error: 'Invalid or inactive location',
-        }
-      }
-    }
-
     // Create subscription with PENDING status
     const { data: subscription, error } = await supabase
       .from('subscriptions')
@@ -183,7 +166,6 @@ export async function createSubscription(
         vendor_name: validated.vendor_name,
         product_id: validated.product_id || null,
         department_id: validated.department_id,
-        location_id: validated.location_id || null,
         amount: validated.amount,
         equivalent_inr_amount: validated.equivalent_inr_amount || null,
         currency: validated.currency,
