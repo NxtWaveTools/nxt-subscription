@@ -74,8 +74,12 @@ export async function fetchDepartments(
     )
 
   // Apply fuzzy search if search term provided (database-level filtering)
+  // Sanitize to prevent SQL injection via special LIKE characters
   if (search) {
-    query = query.or(`name.ilike.%${search}%`)
+    const sanitizedSearch = search
+      .replace(/[%_\\]/g, '\\$&') // Escape %, _, and \ for LIKE patterns
+      .slice(0, 100) // Limit search length
+    query = query.or(`name.ilike.%${sanitizedSearch}%`)
   }
 
   // Apply active status filter

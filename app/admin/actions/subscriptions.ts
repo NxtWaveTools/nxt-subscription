@@ -260,13 +260,23 @@ export async function updateSubscription(
       updateData.status = SUBSCRIPTION_STATUS.PENDING
     }
 
-    // Update subscription
+    // Update subscription with optimistic concurrency control
+    // Check version to prevent race conditions from concurrent updates
     const { data: subscription, error } = await supabase
       .from('subscriptions')
       .update(updateData)
       .eq('id', subscriptionId)
+      .eq('version', existing.version) // Optimistic locking
       .select()
       .single()
+
+    // If no rows updated, it means another update happened (version mismatch)
+    if (!subscription && !error) {
+      return {
+        success: false,
+        error: 'Subscription was modified by another user. Please refresh and try again.',
+      }
+    }
 
     if (error) {
       console.error('Update subscription error:', error)

@@ -109,10 +109,14 @@ export async function fetchSubscriptions(
     query = query.in('department_id', userDepartmentIds)
   }
 
-  // Apply search filter
+  // Apply search filter (sanitize to prevent SQL injection)
   if (filters.search) {
+    // Escape special characters in search term
+    const sanitizedSearch = filters.search
+      .replace(/[%_\\]/g, '\\$&') // Escape %, _, and \ for LIKE patterns
+      .slice(0, 100) // Limit search length
     query = query.or(
-      `tool_name.ilike.%${filters.search}%,vendor_name.ilike.%${filters.search}%,subscription_id.ilike.%${filters.search}%`
+      `tool_name.ilike.%${sanitizedSearch}%,vendor_name.ilike.%${sanitizedSearch}%,subscription_id.ilike.%${sanitizedSearch}%`
     )
   }
 

@@ -62,6 +62,33 @@ async function requirePOCWithDepartmentAccess(departmentId: string) {
 // Actions
 // ============================================================================
 
+// Simple in-memory rate limiter (per server instance)
+// In production, use Redis for distributed rate limiting
+const rateLimitMap = new Map<string, number>()
+const RATE_LIMIT_WINDOW_MS = 1000 // 1 second
+const RATE_LIMIT_MAX_REQUESTS = 5
+
+function checkRateLimit(userId: string): boolean {
+  const now = Date.now()
+  const key = `${userId}:poc_approval`
+  const lastRequest = rateLimitMap.get(key) || 0
+  
+  if (now - lastRequest < RATE_LIMIT_WINDOW_MS / RATE_LIMIT_MAX_REQUESTS) {
+    return false // Rate limited
+  }
+  
+  rateLimitMap.set(key, now)
+  
+  // Clean up old entries periodically
+  if (rateLimitMap.size > 1000) {
+    const oldEntries = Array.from(rateLimitMap.entries())
+      .filter(([, time]) => now - time > RATE_LIMIT_WINDOW_MS)
+    oldEntries.forEach(([k]) => rateLimitMap.delete(k))
+  }
+  
+  return true
+}
+
 /**
  * Approve a payment cycle (POC action)
  * Changes cycle status from PENDING to APPROVED
@@ -97,6 +124,14 @@ export async function approveCycleAction(
     const departmentId = (cycle.subscriptions as { department_id: string }).department_id
     const currentUser = await requirePOCWithDepartmentAccess(departmentId)
 
+    // Rate limit check
+    if (!checkRateLimit(currentUser.id)) {
+      return {
+        success: false,
+        error: 'Too many requests. Please wait a moment before trying again.',
+      }
+    }
+
     // Verify cycle is in PENDING status
     if (cycle.cycle_status !== 'PENDING') {
       return {
@@ -105,8 +140,8 @@ export async function approveCycleAction(
       }
     }
 
-    // Update the payment cycle
-    const { error: updateError } = await supabase
+    // Update the payment cycle with optimistic locking via status check
+    const { data: updatedData, error: updateError } = await supabase
       .from('subscription_payments')
       .update({
         cycle_status: 'APPROVED',
@@ -116,6 +151,16 @@ export async function approveCycleAction(
         updated_at: new Date().toISOString(),
       })
       .eq('id', paymentCycleId)
+      .eq('cycle_status', 'PENDING') // Ensure still PENDING (prevent double-approval)
+      .select()
+
+    // Check if update actually happened (no rows = already approved by someone else)
+    if (!updatedData || updatedData.length === 0) {
+      return {
+        success: false,
+        error: 'Cycle was already processed by another user. Please refresh.',
+      }
+    }
 
     if (updateError) {
       console.error('Approve cycle error:', updateError)
@@ -185,6 +230,14 @@ export async function declineCycleAction(
     const departmentId = (cycle.subscriptions as { department_id: string }).department_id
     const currentUser = await requirePOCWithDepartmentAccess(departmentId)
 
+    // Rate limit check
+    if (!checkRateLimit(currentUser.id)) {
+      return {
+        success: false,
+        error: 'Too many requests. Please wait a moment before trying again.',
+      }
+    }
+
     // Verify cycle is in PENDING status
     if (cycle.cycle_status !== 'PENDING') {
       return {
@@ -193,8 +246,8 @@ export async function declineCycleAction(
       }
     }
 
-    // Update the payment cycle
-    const { error: updateError } = await supabase
+    // Update the payment cycle with optimistic locking
+    const { data: updatedData, error: updateError } = await supabase
       .from('subscription_payments')
       .update({
         cycle_status: 'DECLINED',
@@ -205,6 +258,16 @@ export async function declineCycleAction(
         updated_at: new Date().toISOString(),
       })
       .eq('id', paymentCycleId)
+      .eq('cycle_status', 'PENDING') // Ensure still PENDING
+      .select()
+
+    // Check if update actually happened
+    if (!updatedData || updatedData.length === 0) {
+      return {
+        success: false,
+        error: 'Cycle was already processed by another user. Please refresh.',
+      }
+    }
 
     if (updateError) {
       console.error('Decline cycle error:', updateError)

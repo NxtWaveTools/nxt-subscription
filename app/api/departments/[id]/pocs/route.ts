@@ -4,6 +4,10 @@
 
 import { NextResponse } from 'next/server'
 import { fetchPOCsForDepartment } from '@/lib/data-access'
+import { z } from 'zod'
+
+// UUID validation schema
+const uuidSchema = z.string().uuid('Invalid department ID format')
 
 export async function GET(
   request: Request,
@@ -15,6 +19,15 @@ export async function GET(
     if (!id) {
       return NextResponse.json(
         { error: 'Department ID is required' },
+        { status: 400 }
+      )
+    }
+
+    // Validate UUID format to prevent injection
+    const validationResult = uuidSchema.safeParse(id)
+    if (!validationResult.success) {
+      return NextResponse.json(
+        { error: 'Invalid department ID format' },
         { status: 400 }
       )
     }
