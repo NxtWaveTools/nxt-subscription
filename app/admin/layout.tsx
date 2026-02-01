@@ -32,13 +32,13 @@ export default async function AdminLayout({
   }
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen overflow-x-hidden">
       {/* Sidebar Navigation */}
       <AdminNav user={user} />
 
       {/* Main Content */}
-      <main className="flex-1 p-8">
-        <div className="mx-auto max-w-7xl">{children}</div>
+      <main className="flex-1 p-8 min-w-0">
+        <div className="max-w-full">{children}</div>
       </main>
     </div>
   )

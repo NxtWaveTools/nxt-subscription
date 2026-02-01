@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { SubscriptionsTable } from '@/components/subscriptions/subscriptions-table'
 import { SubscriptionsFilters } from '@/components/subscriptions/subscriptions-filters'
 import { CreateSubscriptionButton } from '@/components/subscriptions/create-subscription-button'
-import { fetchSubscriptions, getSubscriptionCountsByStatus, fetchActiveDepartments, fetchActiveVendors, fetchActiveProducts } from '@/lib/data-access'
+import { fetchSubscriptions, getSubscriptionCountsByStatus, fetchActiveDepartments } from '@/lib/data-access'
 import { validatePageParams, calculateTotalPages, clampPage } from '@/lib/utils/pagination'
 import {
   SUBSCRIPTION_STATUS,
@@ -61,7 +61,7 @@ export default async function FinanceSubscriptionsPage({ searchParams }: Subscri
   const departmentId = params.department_id || undefined
 
   // Fetch data in parallel
-  const [{ subscriptions, totalCount }, statusCounts, departments, vendors, products] = await Promise.all([
+  const [{ subscriptions, totalCount }, statusCounts, departments] = await Promise.all([
     fetchSubscriptions(
       {
         search,
@@ -74,8 +74,6 @@ export default async function FinanceSubscriptionsPage({ searchParams }: Subscri
     ),
     getSubscriptionCountsByStatus(),
     fetchActiveDepartments(),
-    fetchActiveVendors(),
-    fetchActiveProducts(),
   ])
 
   const totalPages = calculateTotalPages(totalCount, limit)
@@ -90,7 +88,7 @@ export default async function FinanceSubscriptionsPage({ searchParams }: Subscri
             Create and manage software subscriptions
           </p>
         </div>
-        <CreateSubscriptionButton departments={departments} vendors={vendors} products={products} />
+        <CreateSubscriptionButton departments={departments} />
       </div>
 
       {/* Status Summary Cards */}
@@ -149,6 +147,7 @@ export default async function FinanceSubscriptionsPage({ searchParams }: Subscri
             pageSize={limit}
             currentPage={currentPage}
             baseRoute={FINANCE_ROUTES.SUBSCRIPTIONS}
+            userRole="FINANCE"
           />
         </CardContent>
       </Card>

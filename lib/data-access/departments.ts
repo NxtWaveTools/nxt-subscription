@@ -202,3 +202,33 @@ export async function fetchDepartmentAnalytics() {
 
   return data || []
 }
+
+/**
+ * Fetch POCs for a specific department
+ */
+export async function fetchPOCsForDepartment(departmentId: string): Promise<{ id: string; name: string; email: string }[]> {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('poc_department_access')
+    .select(`
+      poc_id,
+      users!poc_id(
+        id,
+        name,
+        email
+      )
+    `)
+    .eq('department_id', departmentId)
+
+  if (error) {
+    throw new Error(`Failed to fetch POCs for department: ${error.message}`)
+  }
+
+  // Extract user info from the nested structure
+  return (data || []).map((item: { poc_id: string; users: { id: string; name: string; email: string } | null }) => ({
+    id: item.users?.id || item.poc_id,
+    name: item.users?.name || '',
+    email: item.users?.email || '',
+  })).filter((poc: { id: string; name: string; email: string }) => poc.email)
+}

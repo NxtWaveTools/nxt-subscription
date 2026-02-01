@@ -31,9 +31,9 @@ export default async function POCLayout({
   }
 
   return (
-    <div className="flex h-screen">
+    <div className="flex h-screen overflow-x-hidden">
       <POCNav user={user} />
-      <main className="flex-1 overflow-y-auto p-6 lg:p-8">{children}</main>
+      <main className="flex-1 overflow-y-auto overflow-x-hidden p-6 lg:p-8 min-w-0">{children}</main>
     </div>
   )
 }

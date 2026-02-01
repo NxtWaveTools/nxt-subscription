@@ -5,7 +5,7 @@
 
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -25,22 +25,22 @@ import {
   REQUEST_TYPES,
   BILLING_FREQUENCY,
   CURRENCIES,
-  PAYMENT_STATUS,
-  ACCOUNTING_STATUS,
   ADMIN_ROUTES,
 } from '@/lib/constants'
 import type { 
   RequestType, 
   BillingFrequency, 
-  Currency, 
-  PaymentStatus, 
-  AccountingStatus 
+  Currency,
 } from '@/lib/constants'
 import type { SubscriptionWithRelations } from '@/lib/types'
+
+// Fixed conversion rate: 1 USD = 85 INR
+const USD_TO_INR_RATE = 85
 
 interface SimpleDepartment {
   id: string
   name: string
+  poc_email?: string | null
 }
 
 interface EditSubscriptionFormProps {
@@ -59,6 +59,7 @@ export function EditSubscriptionForm({
   const [requestType, setRequestType] = useState<RequestType>(subscription.request_type as RequestType)
   const [toolName, setToolName] = useState(subscription.tool_name)
   const [vendorName, setVendorName] = useState(subscription.vendor_name)
+  const [prId, setPrId] = useState(subscription.pr_id || '')
   const [departmentId, setDepartmentId] = useState(subscription.department_id)
   const [amount, setAmount] = useState(subscription.amount.toString())
   const [equivalentInrAmount, setEquivalentInrAmount] = useState(subscription.equivalent_inr_amount?.toString() || '')
@@ -70,17 +71,50 @@ export function EditSubscriptionForm({
   const [subscriptionEmail, setSubscriptionEmail] = useState(subscription.subscription_email || '')
   const [pocEmail, setPocEmail] = useState(subscription.poc_email || '')
   const [mandateId, setMandateId] = useState(subscription.mandate_id || '')
-  const [budgetPeriod, setBudgetPeriod] = useState(subscription.budget_period || '')
-  const [paymentUtr, setPaymentUtr] = useState(subscription.payment_utr || '')
   const [requesterRemarks, setRequesterRemarks] = useState(subscription.requester_remarks || '')
-  const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>(subscription.payment_status as PaymentStatus)
-  const [accountingStatus, setAccountingStatus] = useState<AccountingStatus>(subscription.accounting_status as AccountingStatus)
+
+  // Auto-populate POC Email when department changes
+  useEffect(() => {
+    const dept = departments.find(d => d.id === departmentId)
+    if (dept?.poc_email) {
+      setPocEmail(dept.poc_email)
+    }
+  }, [departmentId, departments])
+
+  // Auto-convert currency amounts
+  useEffect(() => {
+    if (!amount) {
+      setEquivalentInrAmount('')
+      return
+    }
+
+    const numAmount = parseFloat(amount)
+    if (isNaN(numAmount)) return
+
+    if (currency === 'USD') {
+      // USD to INR conversion
+      const inrAmount = numAmount * USD_TO_INR_RATE
+      setEquivalentInrAmount(inrAmount.toFixed(2))
+    } else if (currency === 'INR') {
+      // INR = INR, no conversion
+      setEquivalentInrAmount(amount)
+    } else {
+      // Other currencies, clear conversion
+      setEquivalentInrAmount('')
+    }
+  }, [amount, currency])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!toolName || !vendorName || !departmentId || !amount || !startDate) {
+    if (!toolName || !vendorName || !prId || !departmentId || !amount || !startDate || !endDate) {
       toast.error('Please fill in all required fields')
+      return
+    }
+
+    // Validate dates
+    if (new Date(endDate) <= new Date(startDate)) {
+      toast.error('End date must be after start date')
       return
     }
 
@@ -101,11 +135,7 @@ export function EditSubscriptionForm({
       subscription_email: subscriptionEmail || null,
       poc_email: pocEmail || null,
       mandate_id: mandateId || null,
-      budget_period: budgetPeriod || null,
-      payment_utr: paymentUtr || null,
       requester_remarks: requesterRemarks || null,
-      payment_status: paymentStatus,
-      accounting_status: accountingStatus,
     })
 
     setIsSubmitting(false)
@@ -135,37 +165,10 @@ export function EditSubscriptionForm({
     USAGE_BASED: 'Usage Based',
   }
 
-  const paymentStatusLabels: Record<string, string> = {
-    PENDING: 'Pending',
-    PAID: 'Paid',
-    OVERDUE: 'Overdue',
-    CANCELLED: 'Cancelled',
-  }
-
-  const accountingStatusLabels: Record<string, string> = {
-    PENDING: 'Pending',
-    DONE: 'Done',
-  }
-
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Subscription ID (Read-only) */}
-      {subscription.subscription_id && (
-        <div className="space-y-2">
-          <Label>Subscription ID</Label>
-          <Input 
-            value={subscription.subscription_id} 
-            disabled 
-            className="font-mono bg-muted"
-          />
-          <p className="text-xs text-muted-foreground">
-            Auto-generated subscription ID cannot be changed
-          </p>
-        </div>
-      )}
-
-      {/* Request Type and Basic Info */}
-      <div className="grid grid-cols-1 gap-4">
+      {/* Row 1: Request Type, Tool Name, Vendor Name */}
+      <div className="grid grid-cols-3 gap-4">
         <div className="space-y-2">
           <Label htmlFor="requestType">Request Type *</Label>
           <Select value={requestType} onValueChange={(v) => setRequestType(v as RequestType)}>
@@ -181,9 +184,7 @@ export function EditSubscriptionForm({
             </SelectContent>
           </Select>
         </div>
-      </div>
 
-      <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="toolName">Tool Name *</Label>
           <Input
@@ -205,89 +206,34 @@ export function EditSubscriptionForm({
         </div>
       </div>
 
-      {/* Department */}
-      <div className="space-y-2">
-        <Label htmlFor="department">Department *</Label>
-        <Select value={departmentId} onValueChange={setDepartmentId}>
-          <SelectTrigger>
-            <SelectValue placeholder="Select department" />
-          </SelectTrigger>
-          <SelectContent>
-            {departments.map((dept) => (
-              <SelectItem key={dept.id} value={dept.id}>
-                {dept.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Payment Status and Accounting Status */}
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="paymentStatus">Payment Status</Label>
-          <Select value={paymentStatus} onValueChange={(v) => setPaymentStatus(v as PaymentStatus)}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select status" />
-            </SelectTrigger>
-            <SelectContent>
-              {Object.entries(PAYMENT_STATUS).map(([key, value]) => (
-                <SelectItem key={key} value={value}>
-                  {paymentStatusLabels[value]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="accountingStatus">Accounting Status</Label>
-          <Select value={accountingStatus} onValueChange={(v) => setAccountingStatus(v as AccountingStatus)}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select status" />
-            </SelectTrigger>
-            <SelectContent>
-              {Object.entries(ACCOUNTING_STATUS).map(([key, value]) => (
-                <SelectItem key={key} value={value}>
-                  {accountingStatusLabels[value]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      {/* Pricing */}
+      {/* Row 2: PR ID, Department, Billing Frequency */}
       <div className="grid grid-cols-3 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="amount">Amount *</Label>
+          <Label htmlFor="prId">PR ID *</Label>
           <Input
-            id="amount"
-            type="number"
-            step="0.01"
-            min="0"
-            placeholder="0.00"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
+            id="prId"
+            placeholder="e.g., PR-2024-001"
+            value={prId}
+            onChange={(e) => setPrId(e.target.value)}
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="currency">Currency</Label>
-          <Select value={currency} onValueChange={(v) => setCurrency(v as Currency)}>
+          <Label htmlFor="department">Department *</Label>
+          <Select value={departmentId} onValueChange={setDepartmentId}>
             <SelectTrigger>
-              <SelectValue placeholder="Select currency" />
+              <SelectValue placeholder="Select department" />
             </SelectTrigger>
             <SelectContent>
-              {Object.entries(CURRENCIES).map(([key, value]) => (
-                <SelectItem key={key} value={value}>
-                  {value}
+              {departments.map((dept) => (
+                <SelectItem key={dept.id} value={dept.id}>
+                  {dept.name}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
-
+        
         <div className="space-y-2">
           <Label htmlFor="billingFrequency">Billing Frequency *</Label>
           <Select value={billingFrequency} onValueChange={(v) => setBillingFrequency(v as BillingFrequency)}>
@@ -303,6 +249,140 @@ export function EditSubscriptionForm({
             </SelectContent>
           </Select>
         </div>
+      </div>
+
+      {/* Row 3: Amount, Currency, Equivalent INR Amount */}
+      <div className="grid grid-cols-3 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="amount">Amount *</Label>
+          <Input
+            id="amount"
+            type="number"
+            step="0.01"
+            min="0"
+            placeholder="0.00"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="currency">Currency *</Label>
+          <Select value={currency} onValueChange={(v) => setCurrency(v as Currency)}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select currency" />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(CURRENCIES).map(([key, value]) => (
+                <SelectItem key={key} value={value}>
+                  {value}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        
+        <div className="space-y-2">
+          <Label htmlFor="equivalentInrAmount">
+            Equivalent INR Amount 
+            {currency === 'USD' && <span className="text-xs text-muted-foreground ml-1">(auto-converted)</span>}
+          </Label>
+          <Input
+            id="equivalentInrAmount"
+            type="number"
+            step="0.01"
+            min="0"
+            placeholder="0.00"
+            value={equivalentInrAmount}
+            onChange={(e) => setEquivalentInrAmount(e.target.value)}
+            disabled={currency === 'USD' || currency === 'INR'}
+          />
+        </div>
+      </div>
+
+      {/* Row 4: Start Date, End Date, Tool Link/URL */}
+      <div className="grid grid-cols-3 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="startDate">Start Date *</Label>
+          <Input
+            id="startDate"
+            type="date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="endDate">End Date *</Label>
+          <Input
+            id="endDate"
+            type="date"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            min={startDate || undefined}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="loginUrl">Tool Link/URL</Label>
+          <Input
+            id="loginUrl"
+            type="url"
+            placeholder="https://app.example.com/login"
+            value={loginUrl}
+            onChange={(e) => setLoginUrl(e.target.value)}
+          />
+        </div>
+      </div>
+
+      {/* Row 5: Subscription Email, POC Email, Mandate ID */}
+      <div className="grid grid-cols-3 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="subscriptionEmail">Mail ID/Username for Subscription</Label>
+          <Input
+            id="subscriptionEmail"
+            type="email"
+            placeholder="admin@company.com"
+            value={subscriptionEmail}
+            onChange={(e) => setSubscriptionEmail(e.target.value)}
+          />
+        </div>
+        
+        <div className="space-y-2">
+          <Label htmlFor="pocEmail">
+            POC Email for Subscription 
+            <span className="text-xs text-muted-foreground ml-1">(auto-filled)</span>
+          </Label>
+          <Input
+            id="pocEmail"
+            type="email"
+            placeholder="poc@company.com"
+            value={pocEmail}
+            onChange={(e) => setPocEmail(e.target.value)}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="mandateId">Mandate ID</Label>
+          <Input
+            id="mandateId"
+            placeholder="Enter mandate ID"
+            value={mandateId}
+            onChange={(e) => setMandateId(e.target.value)}
+          />
+        </div>
+      </div>
+      
+      {/* Requester Remarks - Full Width */}
+      <div className="space-y-2">
+        <Label htmlFor="requesterRemarks">Requester Remarks</Label>
+        <Textarea
+          id="requesterRemarks"
+          placeholder="Enter any remarks for this request..."
+          value={requesterRemarks}
+          onChange={(e) => setRequesterRemarks(e.target.value)}
+          rows={2}
+        />
       </div>
 
       {/* Dates */}

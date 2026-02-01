@@ -30,51 +30,37 @@ import {
 import { Plus, CreditCard, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { createSubscription } from '@/app/admin/actions/subscriptions'
-import { createVendorAction, createProductAction } from '@/app/admin/actions/master-data'
 import {
   REQUEST_TYPES,
   BILLING_FREQUENCY,
   CURRENCIES,
-  PAYMENT_STATUS,
-  ACCOUNTING_STATUS,
 } from '@/lib/constants'
-import type { RequestType, BillingFrequency, Currency, PaymentStatus, AccountingStatus } from '@/lib/constants'
-import type { Vendor, Product } from '@/lib/types'
+import type { RequestType, BillingFrequency, Currency } from '@/lib/constants'
+
+// Fixed conversion rate: 1 USD = 85 INR
+const USD_TO_INR_RATE = 85
 
 // Simplified types for dropdown data
 interface SimpleDepartment {
   id: string
   name: string
+  poc_email?: string | null
 }
 
 interface CreateSubscriptionButtonProps {
   departments: SimpleDepartment[]
-  vendors: Vendor[]
-  products: Product[]
 }
 
-export function CreateSubscriptionButton({ departments, vendors: initialVendors, products: initialProducts }: CreateSubscriptionButtonProps) {
+export function CreateSubscriptionButton({ departments }: CreateSubscriptionButtonProps) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  
-  // Local state for vendors and products (can be updated when new ones are created)
-  const [vendors, setVendors] = useState<Vendor[]>(initialVendors)
-  const [products, setProducts] = useState<Product[]>(initialProducts)
-  
-  // New vendor/product creation state
-  const [showNewVendorInput, setShowNewVendorInput] = useState(false)
-  const [newVendorName, setNewVendorName] = useState('')
-  const [isCreatingVendor, setIsCreatingVendor] = useState(false)
-  const [showNewProductInput, setShowNewProductInput] = useState(false)
-  const [newProductName, setNewProductName] = useState('')
-  const [isCreatingProduct, setIsCreatingProduct] = useState(false)
 
   // Form state
   const [requestType, setRequestType] = useState<RequestType>('INVOICE')
   const [toolName, setToolName] = useState('')
   const [vendorName, setVendorName] = useState('')
-  const [productId, setProductId] = useState('')
+  const [prId, setPrId] = useState('')
   const [departmentId, setDepartmentId] = useState('')
   const [amount, setAmount] = useState('')
   const [equivalentInrAmount, setEquivalentInrAmount] = useState('')
@@ -86,26 +72,72 @@ export function CreateSubscriptionButton({ departments, vendors: initialVendors,
   const [subscriptionEmail, setSubscriptionEmail] = useState('')
   const [pocEmail, setPocEmail] = useState('')
   const [mandateId, setMandateId] = useState('')
-  const [budgetPeriod, setBudgetPeriod] = useState('')
-  const [paymentUtr, setPaymentUtr] = useState('')
   const [requesterRemarks, setRequesterRemarks] = useState('')
-  const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>('IN_PROGRESS')
-  const [accountingStatus, setAccountingStatus] = useState<AccountingStatus>('PENDING')
-  
-  // Update vendors/products when props change
+
+  // POCs state for the selected department
+  const [departmentPOCs, setDepartmentPOCs] = useState<{ id: string; name: string; email: string }[]>([])
+  const [isLoadingPOCs, setIsLoadingPOCs] = useState(false)
+
+  // Fetch POCs when department changes
   useEffect(() => {
-    setVendors(initialVendors)
-  }, [initialVendors])
-  
+    if (!departmentId) {
+      setDepartmentPOCs([])
+      setPocEmail('')
+      return
+    }
+
+    const fetchPOCs = async () => {
+      setIsLoadingPOCs(true)
+      try {
+        const response = await fetch(`/api/departments/${departmentId}/pocs`)
+        if (response.ok) {
+          const data = await response.json()
+          setDepartmentPOCs(data.pocs || [])
+          // Auto-select first POC if available
+          if (data.pocs && data.pocs.length > 0) {
+            setPocEmail(data.pocs[0].email)
+          } else {
+            setPocEmail('')
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch POCs:', error)
+        setDepartmentPOCs([])
+      } finally {
+        setIsLoadingPOCs(false)
+      }
+    }
+
+    fetchPOCs()
+  }, [departmentId])
+
+  // Auto-convert currency amounts
   useEffect(() => {
-    setProducts(initialProducts)
-  }, [initialProducts])
+    if (!amount) {
+      setEquivalentInrAmount('')
+      return
+    }
+
+    const numAmount = parseFloat(amount)
+    if (isNaN(numAmount)) return
+
+    if (currency === 'USD') {
+      // Convert USD to INR
+      setEquivalentInrAmount((numAmount * USD_TO_INR_RATE).toFixed(2))
+    } else if (currency === 'INR') {
+      // INR = INR, no conversion
+      setEquivalentInrAmount(amount)
+    } else {
+      // Other currencies, clear conversion
+      setEquivalentInrAmount('')
+    }
+  }, [amount, currency])
 
   const resetForm = useCallback(() => {
     setRequestType('INVOICE')
     setToolName('')
     setVendorName('')
-    setProductId('')
+    setPrId('')
     setDepartmentId('')
     setAmount('')
     setEquivalentInrAmount('')
@@ -116,52 +148,22 @@ export function CreateSubscriptionButton({ departments, vendors: initialVendors,
     setLoginUrl('')
     setSubscriptionEmail('')
     setPocEmail('')
+    setDepartmentPOCs([])
     setMandateId('')
-    setBudgetPeriod('')
-    setPaymentUtr('')
     setRequesterRemarks('')
-    setPaymentStatus('IN_PROGRESS')
-    setAccountingStatus('PENDING')
   }, [])
   
-  // Handle product selection
-  const handleProductChange = (value: string) => {
-    if (value === 'CREATE_NEW') {
-      setShowNewProductInput(true)
-      setProductId('')
-    } else {
-      setShowNewProductInput(false)
-      setProductId(value)
-    }
-  }
-  
-  // Handle creating a new product
-  const handleCreateProduct = async () => {
-    if (!newProductName.trim()) {
-      toast.error('Please enter a product name')
-      return
-    }
-    
-    setIsCreatingProduct(true)
-    const result = await createProductAction({ name: newProductName.trim() })
-    setIsCreatingProduct(false)
-    
-    if (result.success && result.data) {
-      toast.success('Product created successfully')
-      setProducts(prev => [...prev, result.data!].sort((a, b) => a.name.localeCompare(b.name)))
-      setProductId(result.data.id)
-      setShowNewProductInput(false)
-      setNewProductName('')
-    } else {
-      toast.error(result.error || 'Failed to create product')
-    }
-  }
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!toolName || !vendorName || !departmentId || !amount || !startDate) {
+    if (!toolName || !vendorName || !prId || !departmentId || !amount || !startDate || !endDate) {
       toast.error('Please fill in all required fields')
+      return
+    }
+
+    // Validate dates
+    if (new Date(endDate) <= new Date(startDate)) {
+      toast.error('End date must be after start date')
       return
     }
 
@@ -171,23 +173,19 @@ export function CreateSubscriptionButton({ departments, vendors: initialVendors,
       request_type: requestType,
       tool_name: toolName,
       vendor_name: vendorName,
-      product_id: productId || null,
+      pr_id: prId,
       department_id: departmentId,
       amount: parseFloat(amount),
       equivalent_inr_amount: equivalentInrAmount ? parseFloat(equivalentInrAmount) : null,
       currency,
       billing_frequency: billingFrequency,
       start_date: startDate,
-      end_date: endDate || null,
+      end_date: endDate,
       login_url: loginUrl || null,
       subscription_email: subscriptionEmail || null,
       poc_email: pocEmail || null,
       mandate_id: mandateId || null,
-      budget_period: budgetPeriod || null,
-      payment_utr: paymentUtr || null,
       requester_remarks: requesterRemarks || null,
-      payment_status: paymentStatus,
-      accounting_status: accountingStatus,
     })
 
     setIsSubmitting(false)
@@ -214,17 +212,6 @@ export function CreateSubscriptionButton({ departments, vendors: initialVendors,
     USAGE_BASED: 'Usage Based',
   }
 
-  const paymentStatusLabels: Record<string, string> = {
-    PAID: 'Paid',
-    IN_PROGRESS: 'In Progress',
-    DECLINED: 'Declined',
-  }
-
-  const accountingStatusLabels: Record<string, string> = {
-    PENDING: 'Pending',
-    DONE: 'Done',
-  }
-
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -233,8 +220,9 @@ export function CreateSubscriptionButton({ departments, vendors: initialVendors,
           New Subscription
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="!fixed !inset-0 !translate-x-0 !translate-y-0 !top-0 !left-0 !w-screen !h-screen !max-w-none !rounded-none">
+        <div className="h-full flex flex-col overflow-hidden">
+        <DialogHeader className="shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <CreditCard className="h-5 w-5" />
             Create New Subscription
@@ -244,25 +232,26 @@ export function CreateSubscriptionButton({ departments, vendors: initialVendors,
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Request Type */}
-          <div className="space-y-2">
-            <Label htmlFor="requestType">Request Type *</Label>
-            <Select value={requestType} onValueChange={(v) => setRequestType(v as RequestType)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select type" />
-              </SelectTrigger>
-              <SelectContent>
-                {Object.entries(REQUEST_TYPES).map(([key, value]) => (
-                  <SelectItem key={key} value={value}>
-                    {requestTypeLabels[value]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto py-6 px-2">
+          <div className="max-w-6xl mx-auto space-y-6">
+          {/* Row 1: Request Type, Tool Name, Vendor Name */}
+          <div className="grid grid-cols-3 gap-6">
+            <div className="space-y-2">
+              <Label htmlFor="requestType">Request Type *</Label>
+              <Select value={requestType} onValueChange={(v) => setRequestType(v as RequestType)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(REQUEST_TYPES).map(([key, value]) => (
+                    <SelectItem key={key} value={value}>
+                      {requestTypeLabels[value]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="toolName">Tool Name *</Label>
               <Input
@@ -284,58 +273,32 @@ export function CreateSubscriptionButton({ departments, vendors: initialVendors,
             </div>
           </div>
 
-          {/* Product */}
-          <div className="grid grid-cols-2 gap-4">
+          {/* Row 2: PR ID, Department, Billing Frequency */}
+          <div className="grid grid-cols-3 gap-6">
             <div className="space-y-2">
-              <Label htmlFor="product">Product (Optional)</Label>
-              {showNewProductInput ? (
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="Enter new product name"
-                    value={newProductName}
-                    onChange={(e) => setNewProductName(e.target.value)}
-                    disabled={isCreatingProduct}
-                  />
-                  <Button
-                    type="button"
-                    size="sm"
-                    onClick={handleCreateProduct}
-                    disabled={isCreatingProduct}
-                  >
-                    {isCreatingProduct ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Add'}
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      setShowNewProductInput(false)
-                      setNewProductName('')
-                    }}
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              ) : (
-                <Select value={productId} onValueChange={handleProductChange}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select or create product" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="CREATE_NEW">
-                      <span className="flex items-center gap-2 text-primary">
-                        <Plus className="h-4 w-4" />
-                        Create New Product
-                      </span>
+              <Label htmlFor="prId">PR ID *</Label>
+              <Input
+                id="prId"
+                placeholder="e.g., PR-2024-001"
+                value={prId}
+                onChange={(e) => setPrId(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="department">Department *</Label>
+              <Select value={departmentId} onValueChange={setDepartmentId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select department" />
+                </SelectTrigger>
+                <SelectContent>
+                  {departments.map((dept) => (
+                    <SelectItem key={dept.id} value={dept.id}>
+                      {dept.name}
                     </SelectItem>
-                    {products.map((product) => (
-                      <SelectItem key={product.id} value={product.id}>
-                        {product.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             
             <div className="space-y-2">
@@ -355,27 +318,8 @@ export function CreateSubscriptionButton({ departments, vendors: initialVendors,
             </div>
           </div>
 
-          {/* Department */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="department">Department *</Label>
-              <Select value={departmentId} onValueChange={setDepartmentId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select department" />
-                </SelectTrigger>
-                <SelectContent>
-                  {departments.map((dept) => (
-                    <SelectItem key={dept.id} value={dept.id}>
-                      {dept.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* Pricing */}
-          <div className="grid grid-cols-4 gap-4">
+          {/* Row 3: Amount, Currency, Equivalent INR Amount */}
+          <div className="grid grid-cols-3 gap-6">
             <div className="space-y-2">
               <Label htmlFor="amount">Amount *</Label>
               <Input
@@ -390,7 +334,7 @@ export function CreateSubscriptionButton({ departments, vendors: initialVendors,
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="currency">Currency</Label>
+              <Label htmlFor="currency">Currency *</Label>
               <Select value={currency} onValueChange={(v) => setCurrency(v as Currency)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select currency" />
@@ -405,7 +349,7 @@ export function CreateSubscriptionButton({ departments, vendors: initialVendors,
               </Select>
             </div>
             
-            <div className="col-span-2 space-y-2">
+            <div className="space-y-2">
               <Label htmlFor="equivalentInrAmount">Equivalent INR Amount</Label>
               <Input
                 id="equivalentInrAmount"
@@ -415,12 +359,13 @@ export function CreateSubscriptionButton({ departments, vendors: initialVendors,
                 placeholder="0.00"
                 value={equivalentInrAmount}
                 onChange={(e) => setEquivalentInrAmount(e.target.value)}
+                disabled={currency === 'USD' || currency === 'INR'}
               />
             </div>
           </div>
 
-          {/* Dates */}
-          <div className="grid grid-cols-2 gap-4">
+          {/* Row 4: Start Date, End Date, Tool Link/URL */}
+          <div className="grid grid-cols-3 gap-6">
             <div className="space-y-2">
               <Label htmlFor="startDate">Start Date *</Label>
               <Input
@@ -432,7 +377,7 @@ export function CreateSubscriptionButton({ departments, vendors: initialVendors,
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="endDate">End Date (Optional)</Label>
+              <Label htmlFor="endDate">End Date *</Label>
               <Input
                 id="endDate"
                 type="date"
@@ -441,57 +386,21 @@ export function CreateSubscriptionButton({ departments, vendors: initialVendors,
                 min={startDate || undefined}
               />
             </div>
-          </div>
-
-          {/* Payment Status and Accounting Status */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="paymentStatus">Payment Status</Label>
-              <Select value={paymentStatus} onValueChange={(v) => setPaymentStatus(v as PaymentStatus)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select status" />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.entries(PAYMENT_STATUS).map(([key, value]) => (
-                    <SelectItem key={key} value={value}>
-                      {paymentStatusLabels[value]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
 
             <div className="space-y-2">
-              <Label htmlFor="accountingStatus">Accounting Status</Label>
-              <Select value={accountingStatus} onValueChange={(v) => setAccountingStatus(v as AccountingStatus)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select status" />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.entries(ACCOUNTING_STATUS).map(([key, value]) => (
-                    <SelectItem key={key} value={value}>
-                      {accountingStatusLabels[value]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label htmlFor="loginUrl">Tool Link/URL</Label>
+              <Input
+                id="loginUrl"
+                type="url"
+                placeholder="https://app.example.com/login"
+                value={loginUrl}
+                onChange={(e) => setLoginUrl(e.target.value)}
+              />
             </div>
           </div>
 
-          {/* Additional Info */}
-          <div className="space-y-2">
-            <Label htmlFor="loginUrl">Login URL (Optional)</Label>
-            <Input
-              id="loginUrl"
-              type="url"
-              placeholder="https://app.example.com/login"
-              value={loginUrl}
-              onChange={(e) => setLoginUrl(e.target.value)}
-            />
-          </div>
-          
-          {/* Subscription Email and POC Email */}
-          <div className="grid grid-cols-2 gap-4">
+          {/* Row 5: Subscription Email, POC Email, Mandate ID */}
+          <div className="grid grid-cols-3 gap-6">
             <div className="space-y-2">
               <Label htmlFor="subscriptionEmail">Mail ID/Username for Subscription</Label>
               <Input
@@ -504,19 +413,33 @@ export function CreateSubscriptionButton({ departments, vendors: initialVendors,
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="pocEmail">POC Email for Subscription</Label>
-              <Input
-                id="pocEmail"
-                type="email"
-                placeholder="poc@company.com"
-                value={pocEmail}
-                onChange={(e) => setPocEmail(e.target.value)}
-              />
+              <Label htmlFor="pocEmail">POC for Subscription *</Label>
+              <Select 
+                value={pocEmail} 
+                onValueChange={setPocEmail}
+                disabled={!departmentId || isLoadingPOCs}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={
+                    !departmentId 
+                      ? "Select department first" 
+                      : isLoadingPOCs 
+                        ? "Loading POCs..." 
+                        : departmentPOCs.length === 0 
+                          ? "No POCs assigned" 
+                          : "Select POC"
+                  } />
+                </SelectTrigger>
+                <SelectContent>
+                  {departmentPOCs.map((poc) => (
+                    <SelectItem key={poc.id} value={poc.email}>
+                      {poc.name} ({poc.email})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-          </div>
-          
-          {/* Mandate ID and Budget Period */}
-          <div className="grid grid-cols-2 gap-4">
+
             <div className="space-y-2">
               <Label htmlFor="mandateId">Mandate ID</Label>
               <Input
@@ -526,30 +449,9 @@ export function CreateSubscriptionButton({ departments, vendors: initialVendors,
                 onChange={(e) => setMandateId(e.target.value)}
               />
             </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="budgetPeriod">Budget Period</Label>
-              <Input
-                id="budgetPeriod"
-                placeholder="e.g., FY24-25"
-                value={budgetPeriod}
-                onChange={(e) => setBudgetPeriod(e.target.value)}
-              />
-            </div>
           </div>
           
-          {/* Payment UTR */}
-          <div className="space-y-2">
-            <Label htmlFor="paymentUtr">Payment UTR</Label>
-            <Input
-              id="paymentUtr"
-              placeholder="Enter payment UTR"
-              value={paymentUtr}
-              onChange={(e) => setPaymentUtr(e.target.value)}
-            />
-          </div>
-          
-          {/* Requester Remarks */}
+          {/* Row 6: Requester Remarks */}
           <div className="space-y-2">
             <Label htmlFor="requesterRemarks">Requester Remarks</Label>
             <Textarea
@@ -560,17 +462,19 @@ export function CreateSubscriptionButton({ departments, vendors: initialVendors,
               rows={2}
             />
           </div>
-
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Create Subscription
-            </Button>
-          </DialogFooter>
+          </div>
         </form>
+
+        <DialogFooter className="shrink-0 pt-4 border-t">
+          <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+            Cancel
+          </Button>
+          <Button type="submit" form="create-subscription-form" disabled={isSubmitting} onClick={handleSubmit}>
+            {isSubmitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+            Create Subscription
+          </Button>
+        </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   )

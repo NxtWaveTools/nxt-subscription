@@ -33,7 +33,7 @@ import {
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { toast } from 'sonner'
 import { cancelSubscription, deleteSubscription } from '@/app/admin/actions/subscriptions'
-import type { SubscriptionWithRelations } from '@/lib/types'
+import type { SubscriptionWithRelations, RoleName } from '@/lib/types'
 
 interface SubscriptionsTableProps {
   subscriptions: SubscriptionWithRelations[]
@@ -42,6 +42,7 @@ interface SubscriptionsTableProps {
   currentPage: number
   baseRoute: string // e.g., '/admin/subscriptions', '/finance/subscriptions', etc.
   readOnly?: boolean // If true, hide edit/delete/cancel actions (for HOD view-only access)
+  userRole?: RoleName // Used to control delete button visibility (ADMIN only)
 }
 
 export function SubscriptionsTable({
@@ -51,6 +52,7 @@ export function SubscriptionsTable({
   currentPage,
   baseRoute,
   readOnly = false,
+  userRole,
 }: SubscriptionsTableProps) {
   const router = useRouter()
   const [subscriptionToDelete, setSubscriptionToDelete] = useState<SubscriptionWithRelations | null>(null)
@@ -91,36 +93,7 @@ export function SubscriptionsTable({
     setSubscriptionToDelete(null)
   }
 
-  const getStatusBadgeVariant = (status: string): 'default' | 'secondary' | 'destructive' | 'outline' => {
-    switch (status) {
-      case 'ACTIVE':
-        return 'default'
-      case 'PENDING':
-        return 'secondary'
-      case 'REJECTED':
-      case 'CANCELLED':
-        return 'destructive'
-      case 'EXPIRED':
-        return 'outline'
-      default:
-        return 'secondary'
-    }
-  }
 
-  const getPaymentStatusBadgeVariant = (status: string): 'default' | 'secondary' | 'destructive' | 'outline' => {
-    switch (status) {
-      case 'PAID':
-        return 'default'
-      case 'PENDING':
-        return 'outline'
-      case 'OVERDUE':
-        return 'destructive'
-      case 'CANCELLED':
-        return 'secondary'
-      default:
-        return 'outline'
-    }
-  }
 
   const formatCurrency = (amount: number, currency: string) => {
     return new Intl.NumberFormat('en-US', {
@@ -151,6 +124,7 @@ export function SubscriptionsTable({
     PAID: 'Paid',
     OVERDUE: 'Overdue',
     CANCELLED: 'Cancelled',
+    IN_PROGRESS: 'In Progress',
   }
 
   const billingFrequencyLabels: Record<string, string> = {
@@ -162,45 +136,47 @@ export function SubscriptionsTable({
 
   const columns: Column<SubscriptionWithRelations>[] = [
     {
-      key: 'subscription_id',
-      label: 'Subscription ID',
+      key: 'tool_name',
+      label: 'Tool Name',
       sortable: true,
       render: (subscription) => (
-        <div className="min-w-[120px]">
+        <div className="min-w-[150px]">
           <Link
             href={`${baseRoute}/${subscription.id}`}
-            className="font-medium font-mono text-sm hover:underline"
+            className="font-medium hover:underline"
           >
-            {subscription.subscription_id || '—'}
+            {subscription.tool_name}
           </Link>
         </div>
       ),
     },
     {
-      key: 'tool_name',
-      label: 'Tool / Vendor',
+      key: 'vendor_name',
+      label: 'Vendor',
       sortable: true,
       render: (subscription) => (
-        <div className="min-w-[200px]">
-          <span className="font-medium">
-            {subscription.tool_name}
-          </span>
-          <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-            <span>{subscription.vendor_name}</span>
-          </div>
-        </div>
+        <div className="min-w-[120px]">{subscription.vendor_name}</div>
+      ),
+    },
+    {
+      key: 'pr_id',
+      label: 'PR ID',
+      render: (subscription) => (
+        <div className="min-w-[100px]">{subscription.pr_id || '—'}</div>
+      ),
+    },
+    {
+      key: 'request_type',
+      label: 'Request Type',
+      render: (subscription) => (
+        <div className="min-w-[100px]">{subscription.request_type}</div>
       ),
     },
     {
       key: 'department',
       label: 'Department',
       render: (subscription) => (
-        <div className="min-w-[150px]">
-          <div className="flex items-center gap-1 text-sm">
-            <Building2 className="h-3 w-3 text-muted-foreground" />
-            {subscription.departments?.name || 'Unknown'}
-          </div>
-        </div>
+        <div className="min-w-[120px]">{subscription.departments?.name || 'Unknown'}</div>
       ),
     },
     {
@@ -208,98 +184,130 @@ export function SubscriptionsTable({
       label: 'Amount',
       sortable: true,
       render: (subscription) => (
-        <div className="min-w-[100px]">
-          <div className="font-medium">
-            {formatCurrency(subscription.amount, subscription.currency)}
-          </div>
-          <div className="text-xs text-muted-foreground">
-            {billingFrequencyLabels[subscription.billing_frequency] || subscription.billing_frequency}
-          </div>
+        <div className="min-w-[120px] font-semibold">
+          {formatCurrency(subscription.amount, subscription.currency)}
         </div>
+      ),
+    },
+    {
+      key: 'billing_frequency',
+      label: 'Billing Frequency',
+      render: (subscription) => (
+        <div className="min-w-[120px]">
+          {billingFrequencyLabels[subscription.billing_frequency] || subscription.billing_frequency}
+        </div>
+      ),
+    },
+    {
+      key: 'subscription_id',
+      label: 'Subscription ID',
+      sortable: true,
+      render: (subscription) => (
+        <div className="min-w-[140px] font-mono text-sm">
+          {subscription.subscription_id || '—'}
+        </div>
+      ),
+    },
+    {
+      key: 'start_date',
+      label: 'Start Date',
+      render: (subscription) => (
+        <div className="min-w-[110px] text-sm">{formatDate(subscription.start_date)}</div>
+      ),
+    },
+    {
+      key: 'end_date',
+      label: 'End Date',
+      render: (subscription) => (
+        <div className="min-w-[110px] text-sm">{formatDate(subscription.end_date)}</div>
       ),
     },
     {
       key: 'status',
       label: 'Status',
       render: (subscription) => (
-        <Badge variant={getStatusBadgeVariant(subscription.status)}>
-          {statusLabels[subscription.status] || subscription.status}
-        </Badge>
+        <div className="min-w-[120px]">
+          <Badge variant="outline">
+            {statusLabels[subscription.status] || subscription.status}
+          </Badge>
+        </div>
       ),
     },
     {
       key: 'payment_status',
-      label: 'Payment',
+      label: 'Payment Status',
       render: (subscription) => (
-        <Badge variant={getPaymentStatusBadgeVariant(subscription.payment_status)}>
-          {paymentStatusLabels[subscription.payment_status] || subscription.payment_status}
-        </Badge>
+        <div className="min-w-[110px]">
+          <Badge variant="outline">
+            {paymentStatusLabels[subscription.payment_status] || subscription.payment_status}
+          </Badge>
+        </div>
       ),
     },
     {
-      key: 'dates',
-      label: 'Period',
+      key: 'subscription_email',
+      label: 'Subscription Email',
       render: (subscription) => (
-        <div className="min-w-[120px] text-sm">
-          <div className="flex items-center gap-1">
-            <Calendar className="h-3 w-3 text-muted-foreground" />
-            {formatDate(subscription.start_date)}
-          </div>
-          {subscription.end_date && (
-            <div className="text-xs text-muted-foreground mt-1">
-              to {formatDate(subscription.end_date)}
-            </div>
-          )}
-        </div>
+        <div className="min-w-[180px] text-sm">{subscription.subscription_email || '—'}</div>
+      ),
+    },
+    {
+      key: 'poc_email',
+      label: 'POC Email',
+      render: (subscription) => (
+        <div className="min-w-[180px] text-sm">{subscription.poc_email || '—'}</div>
       ),
     },
     ...(readOnly ? [] : [{
       key: 'actions',
       label: '',
       render: (subscription) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8">
-              <MoreHorizontal className="h-4 w-4" />
-              <span className="sr-only">Open menu</span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
-              <Link href={`${baseRoute}/${subscription.id}`}>
-                <Eye className="h-4 w-4 mr-2" />
-                View Details
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link href={`${baseRoute}/${subscription.id}/edit`}>
-                <Pencil className="h-4 w-4 mr-2" />
-                Edit
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            {subscription.status === 'ACTIVE' && (
-              <DropdownMenuItem
-                onClick={() => setSubscriptionToCancel(subscription)}
-                className="text-orange-600"
-              >
-                <XCircle className="h-4 w-4 mr-2" />
-                Cancel Subscription
+        <div className="min-w-[50px]">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <MoreHorizontal className="h-4 w-4" />
+                <span className="sr-only">Open menu</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link href={`${baseRoute}/${subscription.id}`}>
+                  <Eye className="h-4 w-4 mr-2" />
+                  View Details
+                </Link>
               </DropdownMenuItem>
-            )}
-            {subscription.status === 'PENDING' && (
-              <DropdownMenuItem
-                onClick={() => setSubscriptionToDelete(subscription)}
-                className="text-destructive"
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Delete
+              <DropdownMenuItem asChild>
+                <Link href={`${baseRoute}/${subscription.id}/edit`}>
+                  <Pencil className="h-4 w-4 mr-2" />
+                  Edit
+                </Link>
               </DropdownMenuItem>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
+              <DropdownMenuSeparator />
+              {subscription.status === 'ACTIVE' && (
+                <DropdownMenuItem
+                  onClick={() => setSubscriptionToCancel(subscription)}
+                  className="text-orange-600"
+                >
+                  <XCircle className="h-4 w-4 mr-2" />
+                  Cancel Subscription
+                </DropdownMenuItem>
+              )}
+              {/* Delete is ADMIN-only */}
+              {subscription.status === 'PENDING' && userRole === 'ADMIN' && (
+                <DropdownMenuItem
+                  onClick={() => setSubscriptionToDelete(subscription)}
+                  className="text-destructive"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       ),
     }] as Column<SubscriptionWithRelations>[]),
   ]

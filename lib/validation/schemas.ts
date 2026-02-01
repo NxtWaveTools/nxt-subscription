@@ -378,7 +378,7 @@ export const subscriptionSchemas = {
     }),
     tool_name: z.string().min(1, 'Tool name is required').max(200, 'Tool name is too long'),
     vendor_name: z.string().min(1, 'Vendor name is required').max(200, 'Vendor name is too long'),
-    product_id: z.string().uuid('Invalid product ID').optional().nullable(),
+    pr_id: z.string().min(1, 'PR ID is required').max(100, 'PR ID is too long'),
     department_id: z.string().uuid('Invalid department ID'),
     amount: z.number().positive('Amount must be positive'),
     equivalent_inr_amount: z.number().positive('Equivalent INR amount must be positive').optional().nullable(),
@@ -393,22 +393,15 @@ export const subscriptionSchemas = {
     poc_email: z.string().email('Invalid POC email').optional().nullable().or(z.literal('')),
     mandate_id: z.string().max(100, 'Mandate ID is too long').optional().nullable(),
     budget_period: z.string().max(50, 'Budget period is too long').optional().nullable(),
-    payment_utr: z.string().max(100, 'Payment UTR is too long').optional().nullable(),
     requester_remarks: z.string().max(1000, 'Requester remarks too long').optional().nullable(),
     start_date: z.coerce.date({
       message: 'Invalid start date',
     }),
     end_date: z.coerce.date({
       message: 'Invalid end date',
-    }).optional().nullable(),
-    payment_status: z.enum(paymentStatusValues, {
-      message: 'Invalid payment status',
-    }).optional().default('IN_PROGRESS'),
-    accounting_status: z.enum(accountingStatusValues, {
-      message: 'Invalid accounting status',
-    }).optional().default('PENDING'),
+    }),
   }).refine(
-    (data) => !data.end_date || data.end_date > data.start_date,
+    (data) => data.end_date > data.start_date,
     {
       message: 'End date must be after start date',
       path: ['end_date'],
@@ -422,7 +415,7 @@ export const subscriptionSchemas = {
     request_type: z.enum(requestTypeValues).optional(),
     tool_name: z.string().min(1).max(200).optional(),
     vendor_name: z.string().min(1).max(200).optional(),
-    product_id: z.string().uuid().optional().nullable(),
+    pr_id: z.string().min(1).max(100).optional(),
     department_id: z.string().uuid().optional(),
     amount: z.number().positive().optional(),
     equivalent_inr_amount: z.number().positive().optional().nullable(),
@@ -433,10 +426,9 @@ export const subscriptionSchemas = {
     poc_email: z.string().email().optional().nullable().or(z.literal('')),
     mandate_id: z.string().max(100).optional().nullable(),
     budget_period: z.string().max(50).optional().nullable(),
-    payment_utr: z.string().max(100).optional().nullable(),
     requester_remarks: z.string().max(1000).optional().nullable(),
     start_date: z.coerce.date().optional(),
-    end_date: z.coerce.date().optional().nullable(),
+    end_date: z.coerce.date().optional(),
     payment_status: z.enum(paymentStatusValues).optional(),
     accounting_status: z.enum(accountingStatusValues).optional(),
   }),
@@ -578,6 +570,7 @@ export const paymentCycleSchemas = {
       message: 'Invalid accounting status',
     }),
     mandate_id: z.string().max(100, 'Mandate ID is too long').optional().nullable(),
+    remarks: z.string().max(500, 'Remarks too long').optional().nullable(),
   }),
 
   /**

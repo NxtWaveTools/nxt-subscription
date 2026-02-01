@@ -20,6 +20,7 @@ export {
   fetchDepartmentById,
   fetchDepartmentsForExport,
   fetchDepartmentAnalytics,
+  fetchPOCsForDepartment,
   type DepartmentFilters,
   type DepartmentPaginationOptions,
   type DepartmentListResponse,

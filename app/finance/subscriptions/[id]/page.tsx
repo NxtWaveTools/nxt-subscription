@@ -1,31 +1,23 @@
 // ============================================================================
-// Finance Subscription Detail Page
-// View subscription details and manage payment cycles
+// Subscription Detail Page
+// View full subscription details including files and approval history
 // ============================================================================
 
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Separator } from '@/components/ui/separator'
+import { Button } from '@/components/ui/button'
 import {
   ArrowLeft,
   Pencil,
-  Building2,
-  MapPin,
-  Calendar,
-  CreditCard,
-  User,
-  Mail,
-  Link as LinkIcon,
-  FileText,
-  Clock,
-  AlertCircle,
+  Upload,
 } from 'lucide-react'
+import {
+  fetchSubscriptionById,
+  fetchSubscriptionPayments,
+} from '@/lib/data-access'
 import { FINANCE_ROUTES } from '@/lib/constants'
-import { fetchSubscriptionById, fetchSubscriptionPayments, fetchSubscriptionFiles } from '@/lib/data-access'
-import { PaymentCycleSection } from './components/payment-cycle-section'
 
 interface SubscriptionDetailPageProps {
   params: Promise<{ id: string }>
@@ -34,18 +26,16 @@ interface SubscriptionDetailPageProps {
 export default async function SubscriptionDetailPage({ params }: SubscriptionDetailPageProps) {
   const { id } = await params
 
-  // Fetch subscription with payment cycles
-  const [subscription, paymentCycles, files] = await Promise.all([
+  // Fetch subscription and related data
+  const [subscription, paymentCycles] = await Promise.all([
     fetchSubscriptionById(id),
     fetchSubscriptionPayments(id),
-    fetchSubscriptionFiles(id),
   ])
 
   if (!subscription) {
     notFound()
   }
 
-  // Helper functions
   const formatCurrency = (amount: number, currency: string) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -62,34 +52,17 @@ export default async function SubscriptionDetailPage({ params }: SubscriptionDet
     })
   }
 
-  const getStatusBadgeVariant = (status: string): 'default' | 'secondary' | 'destructive' | 'outline' => {
-    switch (status) {
-      case 'ACTIVE':
-        return 'default'
-      case 'PENDING':
-        return 'secondary'
-      case 'REJECTED':
-      case 'CANCELLED':
-        return 'destructive'
-      case 'EXPIRED':
-        return 'outline'
-      default:
-        return 'secondary'
-    }
+  const formatDateTime = (dateStr: string) => {
+    return new Date(dateStr).toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
   }
 
-  const getPaymentStatusBadgeVariant = (status: string): 'default' | 'secondary' | 'destructive' | 'outline' => {
-    switch (status) {
-      case 'PAID':
-        return 'default'
-      case 'IN_PROGRESS':
-        return 'secondary'
-      case 'DECLINED':
-        return 'destructive'
-      default:
-        return 'outline'
-    }
-  }
+
 
   const statusLabels: Record<string, string> = {
     PENDING: 'Pending Approval',
@@ -97,6 +70,18 @@ export default async function SubscriptionDetailPage({ params }: SubscriptionDet
     REJECTED: 'Rejected',
     EXPIRED: 'Expired',
     CANCELLED: 'Cancelled',
+  }
+
+  const paymentStatusLabels: Record<string, string> = {
+    PENDING: 'Pending',
+    PAID: 'Paid',
+    OVERDUE: 'Overdue',
+    CANCELLED: 'Cancelled',
+  }
+
+  const accountingStatusLabels: Record<string, string> = {
+    PENDING: 'Pending',
+    DONE: 'Done',
   }
 
   const billingFrequencyLabels: Record<string, string> = {
@@ -117,291 +102,176 @@ export default async function SubscriptionDetailPage({ params }: SubscriptionDet
             </Button>
           </Link>
           <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-3xl font-bold tracking-tight">{subscription.tool_name}</h1>
-              <Badge variant={getStatusBadgeVariant(subscription.status)}>
-                {statusLabels[subscription.status] || subscription.status}
+            <h1 className="text-3xl font-bold tracking-tight">{subscription.tool_name}</h1>
+            <div className="flex items-center gap-2 mt-1">
+              <Badge variant="outline">
+                {statusLabels[subscription.status]}
               </Badge>
+              <span className="text-muted-foreground text-sm">
+                Created {formatDateTime(subscription.created_at)}
+              </span>
             </div>
-            <p className="text-muted-foreground font-mono">
-              {subscription.subscription_id}
-            </p>
           </div>
         </div>
         <Link href={`${FINANCE_ROUTES.SUBSCRIPTIONS}/${subscription.id}/edit`}>
           <Button variant="outline">
             <Pencil className="h-4 w-4 mr-2" />
-            Edit Subscription
+            Edit
           </Button>
         </Link>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Main Details */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Subscription Overview */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Subscription Details</CardTitle>
-              <CardDescription>
-                Core information about this subscription
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Amount & Billing */}
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">Amount</p>
-                  <p className="text-2xl font-bold">
-                    {formatCurrency(subscription.amount, subscription.currency)}
-                  </p>
-                  {subscription.equivalent_inr_amount && subscription.currency !== 'INR' && (
-                    <p className="text-sm text-muted-foreground">
-                      ≈ {formatCurrency(subscription.equivalent_inr_amount, 'INR')}
-                    </p>
-                  )}
-                </div>
-                <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">Billing Frequency</p>
-                  <div className="flex items-center gap-2">
-                    <CreditCard className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium">
-                      {billingFrequencyLabels[subscription.billing_frequency]}
-                    </span>
-                  </div>
-                </div>
-              </div>
+      {/* Subscription Details */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Subscription Details</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <tbody>
+                <tr className="border-b">
+                  <td className="py-4 px-4 text-sm text-muted-foreground w-1/6">Tool Name</td>
+                  <td className="py-4 px-4 w-1/3">{subscription.tool_name}</td>
+                  <td className="py-4 px-4 text-sm text-muted-foreground w-1/6">Vendor</td>
+                  <td className="py-4 px-4 w-1/3">{subscription.vendor_name}</td>
+                </tr>
+                <tr className="border-b">
+                  <td className="py-4 px-4 text-sm text-muted-foreground">PR ID</td>
+                  <td className="py-4 px-4">{subscription.pr_id || '—'}</td>
+                  <td className="py-4 px-4 text-sm text-muted-foreground">Request Type</td>
+                  <td className="py-4 px-4">{subscription.request_type}</td>
+                </tr>
+                <tr className="border-b">
+                  <td className="py-4 px-4 text-sm text-muted-foreground">Department</td>
+                  <td className="py-4 px-4">{subscription.departments?.name || 'Unknown'}</td>
+                  <td className="py-4 px-4 text-sm text-muted-foreground">Amount</td>
+                  <td className="py-4 px-4 font-semibold">{formatCurrency(subscription.amount, subscription.currency)}</td>
+                </tr>
+                <tr className="border-b">
+                  <td className="py-4 px-4 text-sm text-muted-foreground">Billing Frequency</td>
+                  <td className="py-4 px-4">{billingFrequencyLabels[subscription.billing_frequency]}</td>
+                  <td className="py-4 px-4 text-sm text-muted-foreground">Subscription ID</td>
+                  <td className="py-4 px-4 font-mono text-sm">{subscription.subscription_id || '—'}</td>
+                </tr>
+                <tr className="border-b">
+                  <td className="py-4 px-4 text-sm text-muted-foreground">Start Date</td>
+                  <td className="py-4 px-4">{formatDate(subscription.start_date)}</td>
+                  <td className="py-4 px-4 text-sm text-muted-foreground">End Date</td>
+                  <td className="py-4 px-4">{formatDate(subscription.end_date)}</td>
+                </tr>
+                {subscription.login_url && (
+                  <tr className="border-b">
+                    <td className="py-4 px-4 text-sm text-muted-foreground">Tool Link/URL</td>
+                    <td className="py-4 px-4" colSpan={3}>
+                      <a
+                        href={subscription.login_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary hover:underline"
+                      >
+                        {subscription.login_url}
+                      </a>
+                    </td>
+                  </tr>
+                )}
+                {subscription.subscription_email && (
+                  <tr className="border-b">
+                    <td className="py-4 px-4 text-sm text-muted-foreground">Subscription Email</td>
+                    <td className="py-4 px-4" colSpan={3}>{subscription.subscription_email}</td>
+                  </tr>
+                )}
+                {subscription.poc_email && (
+                  <tr className="border-b">
+                    <td className="py-4 px-4 text-sm text-muted-foreground">POC Email</td>
+                    <td className="py-4 px-4" colSpan={3}>{subscription.poc_email}</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
 
-              <Separator />
-
-              {/* Period */}
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground flex items-center gap-1">
-                    <Calendar className="h-3 w-3" />
-                    Start Date
-                  </p>
-                  <p className="font-medium">{formatDate(subscription.start_date)}</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground flex items-center gap-1">
-                    <Calendar className="h-3 w-3" />
-                    End Date
-                  </p>
-                  <p className="font-medium">{formatDate(subscription.end_date)}</p>
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* Department */}
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground flex items-center gap-1">
-                    <Building2 className="h-3 w-3" />
-                    Department
-                  </p>
-                  <p className="font-medium">{subscription.departments?.name || '—'}</p>
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* Vendor & Request Type */}
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">Vendor</p>
-                  <p className="font-medium">{subscription.vendor_name}</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground flex items-center gap-1">
-                    <FileText className="h-3 w-3" />
-                    Request Type
-                  </p>
-                  <Badge variant="outline">{subscription.request_type}</Badge>
-                </div>
-              </div>
-
-              {/* Additional Details */}
-              {(subscription.login_url || subscription.subscription_email || subscription.poc_email) && (
-                <>
-                  <Separator />
-                  <div className="space-y-3">
-                    {subscription.login_url && (
-                      <div className="flex items-center gap-2">
-                        <LinkIcon className="h-4 w-4 text-muted-foreground" />
-                        <a
-                          href={subscription.login_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-sm text-blue-600 hover:underline"
-                        >
-                          {subscription.login_url}
-                        </a>
-                      </div>
-                    )}
-                    {subscription.subscription_email && (
-                      <div className="flex items-center gap-2">
-                        <Mail className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm">{subscription.subscription_email}</span>
-                      </div>
-                    )}
-                    {subscription.poc_email && (
-                      <div className="flex items-center gap-2">
-                        <User className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm">POC: {subscription.poc_email}</span>
-                      </div>
-                    )}
-                  </div>
-                </>
-              )}
-
-              {/* Remarks */}
-              {subscription.requester_remarks && (
-                <>
-                  <Separator />
-                  <div className="space-y-1">
-                    <p className="text-sm text-muted-foreground">Requester Remarks</p>
-                    <p className="text-sm bg-muted p-3 rounded-md">
-                      {subscription.requester_remarks}
-                    </p>
-                  </div>
-                </>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Payment Cycles Section - Client Component */}
-          <PaymentCycleSection
-            subscriptionId={subscription.id}
-            subscriptionStatus={subscription.status}
-            billingFrequency={subscription.billing_frequency}
-            cycleEndDate={subscription.end_date}
-            initialPaymentCycles={paymentCycles}
-          />
-        </div>
-
-        {/* Sidebar */}
-        <div className="space-y-6">
-          {/* Payment Status Card */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Current Payment Status</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Payment Status</span>
-                <Badge variant={getPaymentStatusBadgeVariant(subscription.payment_status)}>
-                  {subscription.payment_status}
-                </Badge>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Accounting Status</span>
-                <Badge variant={subscription.accounting_status === 'DONE' ? 'default' : 'secondary'}>
-                  {subscription.accounting_status}
-                </Badge>
-              </div>
-              {subscription.payment_utr && (
-                <div className="pt-2 border-t">
-                  <p className="text-sm text-muted-foreground">Last Payment UTR</p>
-                  <p className="font-mono text-sm">{subscription.payment_utr}</p>
-                </div>
-              )}
-              {subscription.mandate_id && (
-                <div>
-                  <p className="text-sm text-muted-foreground">Mandate ID</p>
-                  <p className="font-mono text-sm">{subscription.mandate_id}</p>
-                </div>
-              )}
-              {subscription.budget_period && (
-                <div>
-                  <p className="text-sm text-muted-foreground">Budget Period</p>
-                  <p className="text-sm">{subscription.budget_period}</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Files Card */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <FileText className="h-4 w-4" />
-                Files
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {files.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  No files uploaded yet
-                </p>
-              ) : (
-                <div className="space-y-2">
-                  {files.map((file) => (
-                    <div
-                      key={file.id}
-                      className="flex items-center justify-between p-2 border rounded-md text-sm"
-                    >
-                      <div className="flex items-center gap-2 truncate">
-                        <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                        <span className="truncate">{file.original_filename}</span>
-                      </div>
-                      <Badge variant="outline" className="flex-shrink-0 ml-2">
-                        {file.file_type === 'PROOF_OF_PAYMENT' ? 'Payment' : 'Invoice'}
-                      </Badge>
-                    </div>
+      {/* Payment Cycles */}
+      {paymentCycles && paymentCycles.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Payment Cycles</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-3 px-4 font-medium text-sm text-muted-foreground">Cycle</th>
+                    <th className="text-left py-3 px-4 font-medium text-sm text-muted-foreground">Period</th>
+                    <th className="text-left py-3 px-4 font-medium text-sm text-muted-foreground">Payment Status</th>
+                    <th className="text-left py-3 px-4 font-medium text-sm text-muted-foreground">POC Approval</th>
+                    <th className="text-left py-3 px-4 font-medium text-sm text-muted-foreground">Amount</th>
+                    <th className="text-left py-3 px-4 font-medium text-sm text-muted-foreground">Invoice</th>
+                    <th className="text-left py-3 px-4 font-medium text-sm text-muted-foreground">UTR</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paymentCycles.map((cycle) => (
+                    <tr key={cycle.id} className="border-b hover:bg-muted/50">
+                      <td className="py-4 px-4">
+                        <span className="font-medium">#{cycle.cycle_number}</span>
+                      </td>
+                      <td className="py-4 px-4 text-sm text-muted-foreground">
+                        {formatDate(cycle.cycle_start_date)} - {formatDate(cycle.cycle_end_date)}
+                      </td>
+                      <td className="py-4 px-4">
+                        <Badge variant="outline">
+                          {paymentStatusLabels[cycle.payment_status] || cycle.payment_status}
+                        </Badge>
+                      </td>
+                      <td className="py-4 px-4">
+                        <Badge variant="outline">
+                          {cycle.poc_approval_status}
+                        </Badge>
+                      </td>
+                      <td className="py-4 px-4 font-medium">
+                        {formatCurrency(subscription.amount, subscription.currency)}
+                      </td>
+                      <td className="py-4 px-4">
+                        {cycle.invoice_file_id ? (
+                          <div className="flex gap-2">
+                            <Button variant="outline" size="sm">View</Button>
+                            <Button variant="outline" size="sm">Replace</Button>
+                          </div>
+                        ) : (
+                          <Button variant="outline" size="sm">
+                            <Upload className="h-4 w-4 mr-1" />
+                            Upload
+                          </Button>
+                        )}
+                      </td>
+                      <td className="py-4 px-4">
+                        {cycle.payment_utr ? (
+                          <span className="font-mono text-xs">{cycle.payment_utr}</span>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </td>
+                    </tr>
                   ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Meta Info */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <Clock className="h-4 w-4" />
-                Meta Information
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm">
-              <div>
-                <p className="text-muted-foreground">Created By</p>
-                <p className="font-medium">{subscription.creator?.name || subscription.creator?.email || '—'}</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Created At</p>
-                <p className="font-medium">{formatDate(subscription.created_at)}</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Last Updated</p>
-                <p className="font-medium">{formatDate(subscription.updated_at)}</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Version</p>
-                <p className="font-medium">{subscription.version}</p>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Active Cycle Alert */}
-          {paymentCycles.length > 0 && (
-            <Card className="border-yellow-200 bg-yellow-50/50 dark:bg-yellow-950/10">
-              <CardContent className="flex items-start gap-3 pt-6">
-                <AlertCircle className="h-5 w-5 text-yellow-600 flex-shrink-0" />
-                <div className="text-sm">
-                  <p className="font-medium text-yellow-800 dark:text-yellow-200">
-                    {paymentCycles.length} Payment Cycle{paymentCycles.length !== 1 ? 's' : ''}
-                  </p>
-                  <p className="text-yellow-700 dark:text-yellow-300">
-                    Manage recurring payments in the Payment Cycles section below.
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-      </div>
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
+  )
+}
+
+// Helper component for consistent labels
+function Label({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+  return (
+    <span className={`text-xs text-muted-foreground uppercase tracking-wider ${className}`}>
+      {children}
+    </span>
   )
 }
