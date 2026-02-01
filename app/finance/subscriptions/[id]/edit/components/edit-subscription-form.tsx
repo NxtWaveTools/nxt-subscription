@@ -130,7 +130,7 @@ export function EditSubscriptionForm({
       currency,
       billing_frequency: billingFrequency,
       start_date: startDate,
-      end_date: endDate || null,
+      end_date: endDate || undefined,
       login_url: loginUrl || null,
       subscription_email: subscriptionEmail || null,
       poc_email: pocEmail || null,

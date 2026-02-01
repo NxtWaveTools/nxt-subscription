@@ -16,12 +16,10 @@ import {
   ADMIN_ROUTES,
   SUBSCRIPTION_STATUS,
   PAYMENT_STATUS,
-  ACCOUNTING_STATUS,
   BILLING_FREQUENCY,
   REQUEST_TYPES,
   type SubscriptionStatus,
   type PaymentStatus,
-  type AccountingStatus,
   type BillingFrequency,
   type RequestType,
 } from '@/lib/constants'
@@ -53,7 +51,6 @@ export default async function SubscriptionsPage({ searchParams }: SubscriptionsP
   const search = params.search?.trim().slice(0, 100) || ''
   const status = isValidSubscriptionStatus(params.status) ? params.status : undefined
   const paymentStatus = isValidPaymentStatus(params.payment_status) ? params.payment_status : undefined
-  const accountingStatus = isValidAccountingStatus(params.accounting_status) ? params.accounting_status : undefined
   const billingFrequency = isValidBillingFrequency(params.billing_frequency) ? params.billing_frequency : undefined
   const requestType = isValidRequestType(params.request_type) ? params.request_type : undefined
   const departmentId = params.department_id || undefined
@@ -65,7 +62,6 @@ export default async function SubscriptionsPage({ searchParams }: SubscriptionsP
         search,
         status,
         paymentStatus,
-        accountingStatus,
         billingFrequency,
         requestType,
         departmentId,
@@ -197,10 +193,6 @@ function isValidSubscriptionStatus(value: string | undefined): value is Subscrip
 
 function isValidPaymentStatus(value: string | undefined): value is PaymentStatus {
   return value !== undefined && Object.values(PAYMENT_STATUS).includes(value as PaymentStatus)
-}
-
-function isValidAccountingStatus(value: string | undefined): value is AccountingStatus {
-  return value !== undefined && Object.values(ACCOUNTING_STATUS).includes(value as AccountingStatus)
 }
 
 function isValidBillingFrequency(value: string | undefined): value is BillingFrequency {

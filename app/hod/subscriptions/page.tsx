@@ -6,7 +6,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { SubscriptionsTable } from '@/components/subscriptions/subscriptions-table'
 import { SubscriptionsFilters } from '@/components/subscriptions/subscriptions-filters'
-import { fetchSubscriptions, getSubscriptionCountsByStatus, fetchActiveDepartments, fetchActiveVendors, fetchActiveProducts } from '@/lib/data-access'
+import { fetchSubscriptions, getSubscriptionCountsByStatus, fetchActiveDepartments } from '@/lib/data-access'
 import { validatePageParams, calculateTotalPages, clampPage } from '@/lib/utils/pagination'
 import { getCurrentUser } from '@/lib/auth/user'
 import { createClient } from '@/lib/supabase/server'
@@ -99,7 +99,7 @@ export default async function HODSubscriptionsPage({ searchParams }: Subscriptio
   const departmentId = params.department_id || undefined
 
   // Fetch data in parallel - filter by HOD's departments
-  const [{ subscriptions, totalCount }, statusCounts, departments, vendors, products] = await Promise.all([
+  const [{ subscriptions, totalCount }, statusCounts, departments] = await Promise.all([
     fetchSubscriptions(
       {
         search,
@@ -113,8 +113,6 @@ export default async function HODSubscriptionsPage({ searchParams }: Subscriptio
     ),
     getSubscriptionCountsByStatus(hodDepartmentIds),
     fetchActiveDepartments(),
-    fetchActiveVendors(),
-    fetchActiveProducts(),
   ])
 
   const totalPages = calculateTotalPages(totalCount, limit)

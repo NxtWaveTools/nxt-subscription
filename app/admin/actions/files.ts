@@ -10,7 +10,6 @@ import { createClient } from '@/lib/supabase/server'
 import { getCurrentUser, hasAnyRole } from '@/lib/auth/user'
 import { fileSchemas } from '@/lib/validation/schemas'
 import { FILE_SIZE_LIMITS, FILE_TYPES, SUBSCRIPTION_ROUTES } from '@/lib/constants'
-import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITY_TYPES } from '@/lib/utils/audit-log'
 import type { SubscriptionFile } from '@/lib/types'
 import type { FileType } from '@/lib/constants'
 
@@ -182,20 +181,6 @@ export async function uploadSubscriptionFile(
 
     revalidatePath(`${SUBSCRIPTION_ROUTES.SUBSCRIPTIONS}/${input.subscriptionId}`)
 
-    // Audit log
-    createAuditLog({
-      userId: user.id,
-      action: AUDIT_ACTIONS.FILE_UPLOAD,
-      entityType: AUDIT_ENTITY_TYPES.SUBSCRIPTION_FILE,
-      entityId: fileRecord.id,
-      changes: {
-        subscription_id: input.subscriptionId,
-        file_type: input.fileType,
-        original_filename: input.fileName,
-        file_size: input.fileSize,
-      },
-    }).catch(console.error)
-
     return {
       success: true,
       data: fileRecord as SubscriptionFile,
@@ -266,18 +251,6 @@ export async function deleteSubscriptionFile(
     }
 
     revalidatePath(`${SUBSCRIPTION_ROUTES.SUBSCRIPTIONS}/${subscriptionId}`)
-
-    // Audit log
-    createAuditLog({
-      userId: user.id,
-      action: AUDIT_ACTIONS.FILE_DELETE,
-      entityType: AUDIT_ENTITY_TYPES.SUBSCRIPTION_FILE,
-      entityId: fileId,
-      changes: {
-        subscription_id: subscriptionId,
-        original_filename: file.original_filename,
-      },
-    }).catch(console.error)
 
     return {
       success: true,

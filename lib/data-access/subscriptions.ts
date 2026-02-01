@@ -14,7 +14,6 @@ import type {
 import type {
   SubscriptionStatus,
   PaymentStatus,
-  AccountingStatus,
   BillingFrequency,
   RequestType,
 } from '@/lib/constants'
@@ -27,7 +26,6 @@ export interface SubscriptionFilters {
   search?: string
   status?: SubscriptionStatus
   paymentStatus?: PaymentStatus
-  accountingStatus?: AccountingStatus
   billingFrequency?: BillingFrequency
   requestType?: RequestType
   departmentId?: string
@@ -75,7 +73,6 @@ export async function fetchSubscriptions(
       request_type,
       tool_name,
       vendor_name,
-      product_id,
       department_id,
       amount,
       equivalent_inr_amount,
@@ -83,25 +80,18 @@ export async function fetchSubscriptions(
       billing_frequency,
       payment_status,
       status,
-      accounting_status,
       start_date,
       end_date,
       login_url,
       subscription_email,
       poc_email,
       mandate_id,
-      budget_period,
-      payment_utr,
       requester_remarks,
       version,
       created_by,
       created_at,
       updated_at,
       departments:department_id (
-        id,
-        name
-      ),
-      products:product_id (
         id,
         name
       ),
@@ -132,9 +122,6 @@ export async function fetchSubscriptions(
   }
   if (filters.paymentStatus) {
     query = query.eq('payment_status', filters.paymentStatus)
-  }
-  if (filters.accountingStatus) {
-    query = query.eq('accounting_status', filters.accountingStatus)
   }
   if (filters.billingFrequency) {
     query = query.eq('billing_frequency', filters.billingFrequency)
@@ -199,7 +186,6 @@ export async function fetchSubscriptionById(
       request_type,
       tool_name,
       vendor_name,
-      product_id,
       department_id,
       amount,
       equivalent_inr_amount,
@@ -207,15 +193,12 @@ export async function fetchSubscriptionById(
       billing_frequency,
       payment_status,
       status,
-      accounting_status,
       start_date,
       end_date,
       login_url,
       subscription_email,
       poc_email,
       mandate_id,
-      budget_period,
-      payment_utr,
       requester_remarks,
       version,
       created_by,
@@ -347,7 +330,6 @@ export async function fetchPendingSubscriptionsForPOC(
       request_type,
       tool_name,
       vendor_name,
-      product_id,
       department_id,
       amount,
       equivalent_inr_amount,
@@ -355,25 +337,18 @@ export async function fetchPendingSubscriptionsForPOC(
       billing_frequency,
       payment_status,
       status,
-      accounting_status,
       start_date,
       end_date,
       login_url,
       subscription_email,
       poc_email,
       mandate_id,
-      budget_period,
-      payment_utr,
       requester_remarks,
       version,
       created_by,
       created_at,
       updated_at,
       departments:department_id (
-        id,
-        name
-      ),
-      products:product_id (
         id,
         name
       ),
@@ -453,7 +428,6 @@ export async function fetchSubscriptionsForExport(
       request_type,
       tool_name,
       vendor_name,
-      product_id,
       department_id,
       amount,
       equivalent_inr_amount,
@@ -461,15 +435,12 @@ export async function fetchSubscriptionsForExport(
       billing_frequency,
       payment_status,
       status,
-      accounting_status,
       start_date,
       end_date,
       login_url,
       subscription_email,
       poc_email,
       mandate_id,
-      budget_period,
-      payment_utr,
       requester_remarks,
       version,
       created_by,

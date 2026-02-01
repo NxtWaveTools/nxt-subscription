@@ -1,8 +1,9 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import type { User, UserWithRoles, RoleName } from '@/lib/types'
 
 /**
  * Get the currently authenticated user with their roles
+ * Uses admin client to bypass RLS for profile fetch since auth is already verified
  */
 export async function getCurrentUser(): Promise<UserWithRoles | null> {
   const supabase = await createClient()
@@ -13,7 +14,10 @@ export async function getCurrentUser(): Promise<UserWithRoles | null> {
 
   if (!authUser) return null
 
-  const { data: userProfile } = await supabase
+  // Use admin client to fetch user profile (bypasses RLS)
+  // This is safe because we already verified auth via getUser()
+  const adminClient = createAdminClient()
+  const { data: userProfile } = await adminClient
     .from('users')
     .select(`
       id,

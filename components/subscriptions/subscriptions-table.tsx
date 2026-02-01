@@ -258,7 +258,21 @@ export function SubscriptionsTable({
         <div className="min-w-[180px] text-sm">{subscription.poc_email || '—'}</div>
       ),
     },
-    ...(readOnly ? [] : [{
+    // View button - always shown (for readOnly mode like POC)
+    ...(readOnly ? [{
+      key: 'view',
+      label: '',
+      render: (subscription) => (
+        <div className="min-w-[80px]">
+          <Button variant="outline" size="sm" asChild>
+            <a href={`${baseRoute}/${subscription.id}`}>
+              <Eye className="h-4 w-4 mr-1" />
+              View
+            </a>
+          </Button>
+        </div>
+      ),
+    }] as Column<SubscriptionWithRelations>[] : [{
       key: 'actions',
       label: '',
       render: (subscription) => (

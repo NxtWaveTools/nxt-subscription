@@ -1,6 +1,6 @@
 // ============================================================================
-// Payment Cycle Section Component (Finance)
-// Client component for managing payment cycles on subscription detail page
+// Payment Cycle Section Component (Admin)
+// Re-exports the Finance payment cycle section since Admin has same permissions
 // ============================================================================
 
 'use client'
@@ -17,7 +17,6 @@ import {
   CheckCircle2,
   XCircle,
   AlertTriangle,
-  FileText,
   RefreshCcw,
   ChevronDown,
   ChevronUp,
@@ -64,7 +63,7 @@ export function PaymentCycleSection({
   // A cycle is "active" (in progress) if it's not in a terminal state (PAID or DECLINED)
   const hasActiveCycle = latestCycle && !['PAID', 'DECLINED'].includes(latestCycle.cycle_status)
 
-  // Handle create new cycle - matches CreatePaymentCycleDialog expected signature
+  // Handle create new cycle
   const handleCreateCycle = async (startDate: Date, endDate: Date): Promise<{ success: boolean; error?: string }> => {
     const result = await createNewPaymentCycle(subscriptionId, startDate, endDate)
 
@@ -74,7 +73,7 @@ export function PaymentCycleSection({
     return result
   }
 
-  // Handle record payment - matches RecordPaymentDialog expected signature
+  // Handle record payment
   const handleRecordPayment = async (data: {
     payment_utr: string
     payment_status: 'PAID' | 'IN_PROGRESS' | 'DECLINED'
@@ -103,7 +102,7 @@ export function PaymentCycleSection({
 
     setIsCancelling(true)
     try {
-      const result = await cancelPaymentCycleAction(cycleToCancel.id, 'Cancelled by Finance')
+      const result = await cancelPaymentCycleAction(cycleToCancel.id, 'Cancelled by Admin')
 
       if (result.success) {
         toast.success('Payment cycle cancelled')
@@ -129,7 +128,7 @@ export function PaymentCycleSection({
     })
   }
 
-  // Get status display info - simplified statuses
+  // Get status display info
   const getStatusInfo = (status: string) => {
     const statusMap: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; icon: React.ReactNode }> = {
       PENDING: { label: 'Pending Approval', variant: 'secondary', icon: <Clock className="h-3 w-3" /> },

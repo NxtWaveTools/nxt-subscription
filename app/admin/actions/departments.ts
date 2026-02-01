@@ -10,7 +10,6 @@ import { createClient } from '@/lib/supabase/server'
 import { requireAdmin } from '@/lib/auth/user'
 import { adminSchemas } from '@/lib/validation/schemas'
 import { BULK_BATCH_SIZE, ROLE_IDS } from '@/lib/constants'
-import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITY_TYPES } from '@/lib/utils/audit-log'
 import type { Database } from '@/lib/supabase/database.types'
 import type { UserRoleQueryResult, SimpleUser } from '@/lib/types'
 
@@ -72,16 +71,6 @@ export async function createDepartment(name: string) {
 
     revalidatePath('/admin/departments')
     revalidatePath('/admin')
-    
-    // Audit log
-    const currentUser = await requireAdmin()
-    createAuditLog({
-      userId: currentUser.id,
-      action: AUDIT_ACTIONS.DEPARTMENT_CREATE,
-      entityType: AUDIT_ENTITY_TYPES.DEPARTMENT,
-      entityId: data.id,
-      changes: { name: validated.name },
-    }).catch(console.error)
 
     return {
       success: true,
@@ -169,21 +158,6 @@ export async function updateDepartment(
 
     revalidatePath('/admin/departments')
     revalidatePath('/admin')
-    
-    // Audit log
-    const currentUser = await requireAdmin()
-    const actionType = validated.is_active === false 
-      ? AUDIT_ACTIONS.DEPARTMENT_DEACTIVATE 
-      : validated.is_active === true 
-        ? AUDIT_ACTIONS.DEPARTMENT_ACTIVATE 
-        : AUDIT_ACTIONS.DEPARTMENT_UPDATE
-    createAuditLog({
-      userId: currentUser.id,
-      action: actionType,
-      entityType: AUDIT_ENTITY_TYPES.DEPARTMENT,
-      entityId: validated.department_id,
-      changes: updates,
-    }).catch(console.error)
 
     return {
       success: true,
@@ -476,128 +450,8 @@ export async function removeHODFromDepartment(departmentId: string, hodId: strin
 }
 
 // ============================================================================
-// POC Assignment Operations
+// POC Department Access Operations
 // ============================================================================
-
-/**
- * Assign POC to HOD (one-to-one relationship)
- */
-export async function assignPOCToHOD(hodId: string, pocId: string) {
-  try {
-    await requireAdmin()
-
-    // Validate input
-    const validated = adminSchemas.assignPOC.parse({
-      hod_id: hodId,
-      poc_id: pocId,
-    })
-
-    const supabase = await createClient()
-
-    // Verify POC has POC role
-    const { data: hasRole } = await supabase
-      .from('user_roles')
-      .select('role_id')
-      .eq('user_id', validated.poc_id)
-      .eq('role_id', ROLE_IDS.POC)
-      .maybeSingle()
-
-    if (!hasRole) {
-      return {
-        success: false,
-        error: 'User does not have POC role',
-      }
-    }
-
-    // Check if HOD already has a POC
-    const { data: existing } = await supabase
-      .from('hod_poc_mapping')
-      .select('hod_id, poc_id, created_at')
-      .eq('hod_id', validated.hod_id)
-      .maybeSingle()
-
-    if (existing) {
-      return {
-        success: false,
-        error: 'HOD already has a POC assigned. Remove existing POC first.',
-      }
-    }
-
-    // Create mapping
-    const { data, error } = await supabase
-      .from('hod_poc_mapping')
-      .insert({
-        hod_id: validated.hod_id,
-        poc_id: validated.poc_id,
-      })
-      .select()
-      .single()
-
-    if (error) {
-      console.error('Assign POC error:', error)
-      return {
-        success: false,
-        error: 'Failed to assign POC to HOD',
-      }
-    }
-
-    revalidatePath('/admin/departments')
-    revalidatePath('/admin')
-
-    return {
-      success: true,
-      data,
-    }
-  } catch (error) {
-    console.error('Assign POC error:', error)
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'An error occurred',
-    }
-  }
-}
-
-/**
- * Remove POC from HOD
- */
-export async function removePOCFromHOD(hodId: string) {
-  try {
-    await requireAdmin()
-
-    // Validate input
-    const validated = adminSchemas.removePOC.parse({
-      hod_id: hodId,
-    })
-
-    const supabase = await createClient()
-
-    const { error } = await supabase
-      .from('hod_poc_mapping')
-      .delete()
-      .eq('hod_id', validated.hod_id)
-
-    if (error) {
-      console.error('Remove POC error:', error)
-      return {
-        success: false,
-        error: 'Failed to remove POC from HOD',
-      }
-    }
-
-    revalidatePath('/admin/departments')
-    revalidatePath('/admin')
-
-    return {
-      success: true,
-    }
-  } catch (error) {
-    console.error('Remove POC error:', error)
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'An error occurred',
-    }
-  }
-}
 
 /**
  * Grant POC access to department

@@ -10,7 +10,6 @@ import { createClient } from '@/lib/supabase/server'
 import { getCurrentUser, hasAnyRole } from '@/lib/auth/user'
 import { subscriptionSchemas } from '@/lib/validation/schemas'
 import { FINANCE_ROUTES } from '@/lib/constants'
-import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITY_TYPES } from '@/lib/utils/audit-log'
 import {
   calculateNextCycleDates,
   calculateInvoiceDeadline,
@@ -97,6 +96,8 @@ export async function createNewPaymentCycle(
     const invoiceDeadline = calculateInvoiceDeadline(endDate)
 
     // Create the payment cycle
+    // First cycle: PAID (already paid when subscription created)
+    // Renewal cycles (2+): PENDING (waiting for POC approval)
     const { data: newCycle, error: cycleError } = await supabase
       .from('subscription_payments')
       .insert({
@@ -105,9 +106,9 @@ export async function createNewPaymentCycle(
         cycle_start_date: formatDateForDB(startDate),
         cycle_end_date: formatDateForDB(endDate),
         invoice_deadline: formatDateForDB(invoiceDeadline),
-        poc_approval_status: 'PENDING',
-        cycle_status: nextCycleNumber === 1 ? 'PENDING_PAYMENT' : 'PENDING_APPROVAL',
-        payment_status: 'IN_PROGRESS',
+        poc_approval_status: nextCycleNumber === 1 ? 'APPROVED' : 'PENDING',
+        cycle_status: nextCycleNumber === 1 ? 'PAID' : 'PENDING',
+        payment_status: nextCycleNumber === 1 ? 'PAID' : 'IN_PROGRESS',
         accounting_status: 'PENDING',
       })
       .select()
@@ -123,20 +124,6 @@ export async function createNewPaymentCycle(
 
     revalidatePath(FINANCE_ROUTES.SUBSCRIPTIONS)
     revalidatePath(`/finance/subscriptions/${subscriptionId}`)
-
-    // Audit log
-    createAuditLog({
-      userId: currentUser.id,
-      action: AUDIT_ACTIONS.SUBSCRIPTION_UPDATE,
-      entityType: AUDIT_ENTITY_TYPES.SUBSCRIPTION,
-      entityId: subscriptionId,
-      changes: {
-        action: 'create_payment_cycle',
-        cycle_number: nextCycleNumber,
-        cycle_start_date: formatDateForDB(startDate),
-        cycle_end_date: formatDateForDB(endDate),
-      },
-    }).catch(console.error)
 
     return {
       success: true,
@@ -184,7 +171,7 @@ export async function recordPaymentAction(
       }
     }
 
-    // Update the payment cycle
+    // Update the payment cycle - status becomes PAID after recording payment
     const { error: updateError } = await supabase
       .from('subscription_payments')
       .update({
@@ -195,7 +182,7 @@ export async function recordPaymentAction(
         remarks: data.remarks || null,
         payment_recorded_by: currentUser.id,
         payment_recorded_at: new Date().toISOString(),
-        cycle_status: 'PAYMENT_RECORDED',
+        cycle_status: 'PAID',
         updated_at: new Date().toISOString(),
       })
       .eq('id', paymentCycleId)
@@ -210,20 +197,6 @@ export async function recordPaymentAction(
 
     revalidatePath(FINANCE_ROUTES.SUBSCRIPTIONS)
     revalidatePath(`/finance/subscriptions/${cycle.subscription_id}`)
-
-    // Audit log
-    createAuditLog({
-      userId: currentUser.id,
-      action: AUDIT_ACTIONS.SUBSCRIPTION_UPDATE,
-      entityType: AUDIT_ENTITY_TYPES.SUBSCRIPTION,
-      entityId: cycle.subscription_id,
-      changes: {
-        action: 'record_payment',
-        cycle_number: cycle.cycle_number,
-        payment_utr: data.payment_utr,
-        payment_status: data.payment_status,
-      },
-    }).catch(console.error)
 
     return {
       success: true,
@@ -264,11 +237,11 @@ export async function cancelPaymentCycleAction(
       }
     }
 
-    // Update the payment cycle to cancelled
+    // Update the payment cycle to declined (cancelled by Finance)
     const { error: updateError } = await supabase
       .from('subscription_payments')
       .update({
-        cycle_status: 'CANCELLED',
+        cycle_status: 'DECLINED',
         poc_rejection_reason: reason || 'Cancelled by Finance',
         updated_at: new Date().toISOString(),
       })
@@ -284,19 +257,6 @@ export async function cancelPaymentCycleAction(
 
     revalidatePath(FINANCE_ROUTES.SUBSCRIPTIONS)
     revalidatePath(`/finance/subscriptions/${cycle.subscription_id}`)
-
-    // Audit log
-    createAuditLog({
-      userId: currentUser.id,
-      action: AUDIT_ACTIONS.SUBSCRIPTION_UPDATE,
-      entityType: AUDIT_ENTITY_TYPES.SUBSCRIPTION,
-      entityId: cycle.subscription_id,
-      changes: {
-        action: 'cancel_payment_cycle',
-        cycle_number: cycle.cycle_number,
-        reason: reason || 'Cancelled by Finance',
-      },
-    }).catch(console.error)
 
     return {
       success: true,

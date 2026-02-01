@@ -228,21 +228,6 @@ export const adminSchemas = {
   }),
 
   /**
-   * Assign POC to HOD
-   */
-  assignPOC: z.object({
-    hod_id: z.string().uuid('Invalid HOD user ID'),
-    poc_id: z.string().uuid('Invalid POC user ID'),
-  }),
-
-  /**
-   * Remove POC from HOD
-   */
-  removePOC: z.object({
-    hod_id: z.string().uuid('Invalid HOD user ID'),
-  }),
-
-  /**
    * Grant POC access to department
    */
   grantPOCAccess: z.object({
@@ -392,7 +377,6 @@ export const subscriptionSchemas = {
     subscription_email: z.string().email('Invalid subscription email').optional().nullable().or(z.literal('')),
     poc_email: z.string().email('Invalid POC email').optional().nullable().or(z.literal('')),
     mandate_id: z.string().max(100, 'Mandate ID is too long').optional().nullable(),
-    budget_period: z.string().max(50, 'Budget period is too long').optional().nullable(),
     requester_remarks: z.string().max(1000, 'Requester remarks too long').optional().nullable(),
     start_date: z.coerce.date({
       message: 'Invalid start date',
@@ -425,12 +409,10 @@ export const subscriptionSchemas = {
     subscription_email: z.string().email().optional().nullable().or(z.literal('')),
     poc_email: z.string().email().optional().nullable().or(z.literal('')),
     mandate_id: z.string().max(100).optional().nullable(),
-    budget_period: z.string().max(50).optional().nullable(),
     requester_remarks: z.string().max(1000).optional().nullable(),
     start_date: z.coerce.date().optional(),
     end_date: z.coerce.date().optional(),
     payment_status: z.enum(paymentStatusValues).optional(),
-    accounting_status: z.enum(accountingStatusValues).optional(),
   }),
 
   /**
@@ -465,15 +447,6 @@ export const subscriptionSchemas = {
   }),
 
   /**
-   * Update accounting status schema
-   */
-  updateAccounting: z.object({
-    accounting_status: z.enum(accountingStatusValues, {
-      message: 'Invalid accounting status',
-    }),
-  }),
-
-  /**
    * Subscription ID validation
    */
   subscriptionId: z.string().uuid('Invalid subscription ID'),
@@ -484,10 +457,8 @@ export const subscriptionSchemas = {
   filter: z.object({
     search: z.string().optional(),
     department_id: z.string().uuid().optional(),
-    product_id: z.string().uuid().optional(),
     status: z.enum(subscriptionStatusValues).optional(),
     payment_status: z.enum(paymentStatusValues).optional(),
-    accounting_status: z.enum(accountingStatusValues).optional(),
     request_type: z.enum(requestTypeValues).optional(),
     billing_frequency: z.enum(billingFrequencyValues).optional(),
     start_date_from: z.coerce.date().optional(),
@@ -519,36 +490,14 @@ export const fileSchemas = {
 }
 
 // ============================================================================
-// Notification Schemas
-// ============================================================================
-
-export const notificationSchemas = {
-  /**
-   * Notification ID validation
-   */
-  notificationId: z.string().uuid('Invalid notification ID'),
-
-  /**
-   * Mark notifications as read
-   */
-  markRead: z.object({
-    notification_ids: z.array(z.string().uuid()).min(1).max(100),
-  }),
-}
-
-// ============================================================================
 // Payment Cycle Validation Schemas
 // ============================================================================
 
 const paymentCycleStatusValues = [
-  PAYMENT_CYCLE_STATUS.PENDING_PAYMENT,
-  PAYMENT_CYCLE_STATUS.PAYMENT_RECORDED,
-  PAYMENT_CYCLE_STATUS.PENDING_APPROVAL,
+  PAYMENT_CYCLE_STATUS.PENDING,
   PAYMENT_CYCLE_STATUS.APPROVED,
-  PAYMENT_CYCLE_STATUS.REJECTED,
-  PAYMENT_CYCLE_STATUS.INVOICE_UPLOADED,
-  PAYMENT_CYCLE_STATUS.COMPLETED,
-  PAYMENT_CYCLE_STATUS.CANCELLED,
+  PAYMENT_CYCLE_STATUS.DECLINED,
+  PAYMENT_CYCLE_STATUS.PAID,
 ] as const
 
 const pocApprovalStatusValues = [

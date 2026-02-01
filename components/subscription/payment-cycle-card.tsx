@@ -49,17 +49,7 @@ interface PaymentCycleCardProps {
 
 function getCycleStatusBadge(status: PaymentCycleStatus) {
   const statusConfig: Record<PaymentCycleStatus, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; icon: React.ReactNode }> = {
-    PENDING_PAYMENT: {
-      label: 'Pending Payment',
-      variant: 'secondary',
-      icon: <Clock className="h-3 w-3" />,
-    },
-    PAYMENT_RECORDED: {
-      label: 'Payment Recorded',
-      variant: 'default',
-      icon: <DollarSign className="h-3 w-3" />,
-    },
-    PENDING_APPROVAL: {
+    PENDING: {
       label: 'Pending Approval',
       variant: 'secondary',
       icon: <Clock className="h-3 w-3" />,
@@ -69,25 +59,15 @@ function getCycleStatusBadge(status: PaymentCycleStatus) {
       variant: 'default',
       icon: <CheckCircle className="h-3 w-3" />,
     },
-    REJECTED: {
-      label: 'Rejected',
+    DECLINED: {
+      label: 'Declined',
       variant: 'destructive',
       icon: <XCircle className="h-3 w-3" />,
     },
-    INVOICE_UPLOADED: {
-      label: 'Invoice Uploaded',
+    PAID: {
+      label: 'Paid',
       variant: 'default',
-      icon: <FileText className="h-3 w-3" />,
-    },
-    COMPLETED: {
-      label: 'Completed',
-      variant: 'default',
-      icon: <CheckCircle className="h-3 w-3" />,
-    },
-    CANCELLED: {
-      label: 'Cancelled',
-      variant: 'destructive',
-      icon: <XCircle className="h-3 w-3" />,
+      icon: <DollarSign className="h-3 w-3" />,
     },
   }
 
@@ -154,18 +134,20 @@ export function PaymentCycleCard({
   const showPOCActions = userRole === 'POC'
   const isHOD = userRole === 'HOD'
 
+  // Finance can record payment when cycle is APPROVED (POC approved, waiting for payment)
   const canRecordPayment = 
     showFinanceActions && 
-    payment.cycle_status === PAYMENT_CYCLE_STATUS.PENDING_PAYMENT
+    payment.cycle_status === PAYMENT_CYCLE_STATUS.APPROVED
 
+  // POC can approve/reject when cycle is PENDING
   const canApproveReject = 
     showPOCActions && 
-    payment.cycle_status === PAYMENT_CYCLE_STATUS.PENDING_APPROVAL
+    payment.cycle_status === PAYMENT_CYCLE_STATUS.PENDING
 
+  // POC can upload invoice when cycle is APPROVED (before Finance records payment)
   const canUploadInvoice = 
     showPOCActions && 
-    (payment.cycle_status === PAYMENT_CYCLE_STATUS.PAYMENT_RECORDED || 
-     payment.cycle_status === PAYMENT_CYCLE_STATUS.APPROVED) &&
+    payment.cycle_status === PAYMENT_CYCLE_STATUS.APPROVED &&
     !payment.invoice_file_id
 
   const deadlineNear = !payment.invoice_file_id && isDeadlineNear(payment.invoice_deadline)

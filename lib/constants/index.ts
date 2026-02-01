@@ -39,7 +39,6 @@ export const ADMIN_ROUTES = {
   USERS: '/admin/users',
   DEPARTMENTS: '/admin/departments',
   SUBSCRIPTIONS: '/admin/subscriptions',
-  ANALYTICS: '/admin/analytics',
 } as const
 
 // Finance routes (FINANCE role)
@@ -185,16 +184,12 @@ export const FILE_SIZE_LIMITS = {
 // Payment Cycle Constants
 // ============================================================================
 
-// Payment cycle status (tracks each billing cycle)
+// Payment cycle status (tracks each billing cycle) - simplified
 export const PAYMENT_CYCLE_STATUS = {
-  PENDING_PAYMENT: 'PENDING_PAYMENT',       // Waiting for Finance to record payment
-  PAYMENT_RECORDED: 'PAYMENT_RECORDED',     // Finance recorded, waiting for POC invoice
-  PENDING_APPROVAL: 'PENDING_APPROVAL',     // Awaiting POC approval for next renewal
-  APPROVED: 'APPROVED',                     // POC approved renewal
-  REJECTED: 'REJECTED',                     // POC rejected renewal
-  INVOICE_UPLOADED: 'INVOICE_UPLOADED',     // POC uploaded invoice
-  COMPLETED: 'COMPLETED',                   // Cycle complete (payment + invoice done)
-  CANCELLED: 'CANCELLED',                   // Cancelled due to missing invoice
+  PENDING: 'PENDING',     // Waiting for POC to approve/decline
+  APPROVED: 'APPROVED',   // POC approved, waiting for payment
+  DECLINED: 'DECLINED',   // POC declined renewal
+  PAID: 'PAID',           // Payment complete
 } as const
 
 export type PaymentCycleStatus = typeof PAYMENT_CYCLE_STATUS[keyof typeof PAYMENT_CYCLE_STATUS]
@@ -208,21 +203,6 @@ export const POC_APPROVAL_STATUS = {
 
 export type PocApprovalStatus = typeof POC_APPROVAL_STATUS[keyof typeof POC_APPROVAL_STATUS]
 
-// Days before renewal to send reminder
-export const RENEWAL_REMINDER_DAYS = 10 as const
-
-// Notification types
-export const NOTIFICATION_TYPES = {
-  APPROVAL_REQUEST: 'APPROVAL_REQUEST',
-  APPROVAL_DECISION: 'APPROVAL_DECISION',
-  PAYMENT_UPDATE: 'PAYMENT_UPDATE',
-  RENEWAL_REMINDER: 'RENEWAL_REMINDER',
-  INVOICE_OVERDUE: 'INVOICE_OVERDUE',
-  GENERAL: 'GENERAL',
-} as const
-
-export type NotificationType = typeof NOTIFICATION_TYPES[keyof typeof NOTIFICATION_TYPES]
-
 // Approval actions
 export const APPROVAL_ACTIONS = {
   APPROVED: 'APPROVED',
@@ -231,12 +211,8 @@ export const APPROVAL_ACTIONS = {
 
 export type ApprovalAction = typeof APPROVAL_ACTIONS[keyof typeof APPROVAL_ACTIONS]
 
-// Notification retention period
-export const NOTIFICATION_RETENTION_DAYS = 10 as const
-
 // Subscription routes
 export const SUBSCRIPTION_ROUTES = {
   SUBSCRIPTIONS: '/admin/subscriptions',
   APPROVALS: '/admin/approvals',
-  ANALYTICS: '/admin/subscriptions/analytics',
 } as const

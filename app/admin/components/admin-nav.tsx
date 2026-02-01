@@ -49,11 +49,6 @@ const navItems = [
     href: ADMIN_ROUTES.SUBSCRIPTIONS,
     icon: CreditCard,
   },
-  {
-    title: 'Analytics',
-    href: ADMIN_ROUTES.ANALYTICS,
-    icon: BarChart3,
-  },
 ]
 
 export function AdminNav({ user }: AdminNavProps) {

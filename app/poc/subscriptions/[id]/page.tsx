@@ -1,41 +1,61 @@
 // ============================================================================
-// Subscription Detail Page
-// View full subscription details including files and approval history
+// POC Subscription Detail Page
+// View subscription details and approve/decline payment cycles
 // ============================================================================
 
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import {
-  ArrowLeft,
-  Pencil,
-  Upload,
-} from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 import {
   fetchSubscriptionById,
   fetchSubscriptionPayments,
 } from '@/lib/data-access'
-import { FINANCE_ROUTES } from '@/lib/constants'
-import { PaymentCycleSection } from './components/payment-cycle-section'
+import { getCurrentUser, hasAnyRole } from '@/lib/auth/user'
+import { createAdminClient } from '@/lib/supabase/server'
+import { POC_ROUTES } from '@/lib/constants'
+import { POCPaymentCycleSection } from './components/poc-payment-cycle-section'
 
 interface SubscriptionDetailPageProps {
   params: Promise<{ id: string }>
 }
 
-export default async function SubscriptionDetailPage({ params }: SubscriptionDetailPageProps) {
+export default async function POCSubscriptionDetailPage({ params }: SubscriptionDetailPageProps) {
   const { id } = await params
+  
+  // Verify user is POC and has access to this subscription's department
+  const user = await getCurrentUser()
+  if (!user) {
+    redirect('/login')
+  }
 
-  // Fetch subscription and related data
-  const [subscription, paymentCycles] = await Promise.all([
-    fetchSubscriptionById(id),
-    fetchSubscriptionPayments(id),
-  ])
-
+  // Fetch subscription first to check department access
+  const subscription = await fetchSubscriptionById(id)
+  
   if (!subscription) {
     notFound()
   }
+
+  // Check if user has access to this department (unless admin)
+  if (!hasAnyRole(user, ['ADMIN'])) {
+    // Use admin client to check POC access (bypasses RLS for this internal check)
+    const supabase = createAdminClient()
+    const { data: access } = await supabase
+      .from('poc_department_access')
+      .select('poc_id, department_id')
+      .eq('poc_id', user.id)
+      .eq('department_id', subscription.department_id)
+      .single()
+    
+    if (!access) {
+      redirect('/unauthorized')
+    }
+  }
+
+  // Fetch payment cycles
+  const paymentCycles = await fetchSubscriptionPayments(id)
 
   const formatCurrency = (amount: number, currency: string) => {
     return new Intl.NumberFormat('en-US', {
@@ -63,26 +83,12 @@ export default async function SubscriptionDetailPage({ params }: SubscriptionDet
     })
   }
 
-
-
   const statusLabels: Record<string, string> = {
     PENDING: 'Pending Approval',
     ACTIVE: 'Active',
     REJECTED: 'Rejected',
     EXPIRED: 'Expired',
     CANCELLED: 'Cancelled',
-  }
-
-  const paymentStatusLabels: Record<string, string> = {
-    PENDING: 'Pending',
-    PAID: 'Paid',
-    OVERDUE: 'Overdue',
-    CANCELLED: 'Cancelled',
-  }
-
-  const accountingStatusLabels: Record<string, string> = {
-    PENDING: 'Pending',
-    DONE: 'Done',
   }
 
   const billingFrequencyLabels: Record<string, string> = {
@@ -92,12 +98,15 @@ export default async function SubscriptionDetailPage({ params }: SubscriptionDet
     USAGE_BASED: 'Usage Based',
   }
 
+  // Count pending cycles for alert
+  const pendingCyclesCount = paymentCycles.filter(c => c.cycle_status === 'PENDING').length
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Link href={FINANCE_ROUTES.SUBSCRIPTIONS}>
+          <Link href={POC_ROUTES.SUBSCRIPTIONS}>
             <Button variant="ghost" size="icon">
               <ArrowLeft className="h-4 w-4" />
             </Button>
@@ -108,21 +117,20 @@ export default async function SubscriptionDetailPage({ params }: SubscriptionDet
               <Badge variant="outline">
                 {statusLabels[subscription.status]}
               </Badge>
+              {pendingCyclesCount > 0 && (
+                <Badge variant="secondary">
+                  {pendingCyclesCount} cycle{pendingCyclesCount > 1 ? 's' : ''} pending approval
+                </Badge>
+              )}
               <span className="text-muted-foreground text-sm">
                 Created {formatDateTime(subscription.created_at)}
               </span>
             </div>
           </div>
         </div>
-        <Link href={`${FINANCE_ROUTES.SUBSCRIPTIONS}/${subscription.id}/edit`}>
-          <Button variant="outline">
-            <Pencil className="h-4 w-4 mr-2" />
-            Edit
-          </Button>
-        </Link>
       </div>
 
-      {/* Subscription Details */}
+      {/* Subscription Details (View Only) */}
       <Card>
         <CardHeader>
           <CardTitle>Subscription Details</CardTitle>
@@ -136,12 +144,6 @@ export default async function SubscriptionDetailPage({ params }: SubscriptionDet
                   <td className="py-4 px-4 w-1/3">{subscription.tool_name}</td>
                   <td className="py-4 px-4 text-sm text-muted-foreground w-1/6">Vendor</td>
                   <td className="py-4 px-4 w-1/3">{subscription.vendor_name}</td>
-                </tr>
-                <tr className="border-b">
-                  <td className="py-4 px-4 text-sm text-muted-foreground">PR ID</td>
-                  <td className="py-4 px-4">{subscription.pr_id || '—'}</td>
-                  <td className="py-4 px-4 text-sm text-muted-foreground">Request Type</td>
-                  <td className="py-4 px-4">{subscription.request_type}</td>
                 </tr>
                 <tr className="border-b">
                   <td className="py-4 px-4 text-sm text-muted-foreground">Department</td>
@@ -176,12 +178,6 @@ export default async function SubscriptionDetailPage({ params }: SubscriptionDet
                     </td>
                   </tr>
                 )}
-                {subscription.subscription_email && (
-                  <tr className="border-b">
-                    <td className="py-4 px-4 text-sm text-muted-foreground">Subscription Email</td>
-                    <td className="py-4 px-4" colSpan={3}>{subscription.subscription_email}</td>
-                  </tr>
-                )}
                 {subscription.poc_email && (
                   <tr className="border-b">
                     <td className="py-4 px-4 text-sm text-muted-foreground">POC Email</td>
@@ -194,13 +190,13 @@ export default async function SubscriptionDetailPage({ params }: SubscriptionDet
         </CardContent>
       </Card>
 
-      {/* Payment Cycles with Actions */}
-      <PaymentCycleSection
+      {/* Payment Cycles with Approve/Decline Actions */}
+      <POCPaymentCycleSection
         subscriptionId={subscription.id}
         subscriptionStatus={subscription.status}
-        billingFrequency={subscription.billing_frequency}
-        cycleEndDate={subscription.end_date}
-        initialPaymentCycles={paymentCycles}
+        paymentCycles={paymentCycles}
+        currency={subscription.currency}
+        amount={subscription.amount}
       />
     </div>
   )

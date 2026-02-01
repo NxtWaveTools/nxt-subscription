@@ -3,10 +3,12 @@
 // Approve/reject subscriptions for assigned departments
 // ============================================================================
 
+import Link from 'next/link'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import { SubscriptionsTable } from '@/components/subscriptions/subscriptions-table'
 import { SubscriptionsFilters } from '@/components/subscriptions/subscriptions-filters'
-import { fetchSubscriptions, getSubscriptionCountsByStatus, fetchActiveDepartments, fetchActiveVendors, fetchActiveProducts } from '@/lib/data-access'
+import { fetchSubscriptions, getSubscriptionCountsByStatus, fetchActiveDepartments, getPaymentCycleCountsForDepartments } from '@/lib/data-access'
 import { validatePageParams, calculateTotalPages, clampPage } from '@/lib/utils/pagination'
 import { getCurrentUser } from '@/lib/auth/user'
 import { createClient } from '@/lib/supabase/server'
@@ -20,7 +22,7 @@ import {
   type BillingFrequency,
 } from '@/lib/constants'
 import { Badge } from '@/components/ui/badge'
-import { Clock, CheckCircle2, XCircle, AlertCircle } from 'lucide-react'
+import { Clock, CheckCircle2, XCircle, AlertCircle, FileCheck } from 'lucide-react'
 
 interface SubscriptionsPageProps {
   searchParams: Promise<{
@@ -99,7 +101,7 @@ export default async function POCSubscriptionsPage({ searchParams }: Subscriptio
   const departmentId = params.department_id || undefined
 
   // Fetch data in parallel - filter by POC's departments
-  const [{ subscriptions, totalCount }, statusCounts, departments, vendors, products] = await Promise.all([
+  const [{ subscriptions, totalCount }, statusCounts, departments, paymentCycleCounts] = await Promise.all([
     fetchSubscriptions(
       {
         search,
@@ -113,8 +115,7 @@ export default async function POCSubscriptionsPage({ searchParams }: Subscriptio
     ),
     getSubscriptionCountsByStatus(pocDepartmentIds),
     fetchActiveDepartments(),
-    fetchActiveVendors(),
-    fetchActiveProducts(),
+    getPaymentCycleCountsForDepartments(pocDepartmentIds),
   ])
 
   const totalPages = calculateTotalPages(totalCount, limit)
@@ -126,28 +127,60 @@ export default async function POCSubscriptionsPage({ searchParams }: Subscriptio
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Subscriptions</h1>
           <p className="text-muted-foreground">
-            Approve and manage subscriptions for your departments
+            Review and approve payment cycles for your departments
           </p>
         </div>
       </div>
 
-      {/* Status Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-5">
+      {/* Pending Approval Alert */}
+      {paymentCycleCounts.PENDING > 0 && (
+        <Card className="border-yellow-300 bg-yellow-50/50 dark:border-yellow-700 dark:bg-yellow-950/30">
+          <CardContent className="py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="rounded-full bg-yellow-100 p-2 dark:bg-yellow-900">
+                  <Clock className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+                </div>
+                <div>
+                  <p className="font-semibold text-yellow-800 dark:text-yellow-200">
+                    {paymentCycleCounts.PENDING} Payment Cycle{paymentCycleCounts.PENDING > 1 ? 's' : ''} Pending Your Approval
+                  </p>
+                  <p className="text-sm text-yellow-700 dark:text-yellow-300">
+                    Click on a subscription below to view and approve/decline renewal cycles
+                  </p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Payment Cycle Status Cards */}
+      <div className="grid gap-4 md:grid-cols-4">
         <StatusCard
-          title="Total"
-          count={
-            statusCounts.PENDING +
-            statusCounts.ACTIVE +
-            statusCounts.REJECTED +
-            statusCounts.EXPIRED +
-            statusCounts.CANCELLED
-          }
-          icon={AlertCircle}
+          title="Cycles Pending Approval"
+          count={paymentCycleCounts.PENDING}
+          variant="warning"
+          icon={Clock}
         />
-        <StatusCard title="Pending" count={statusCounts.PENDING} variant="warning" icon={Clock} />
-        <StatusCard title="Active" count={statusCounts.ACTIVE} variant="success" icon={CheckCircle2} />
-        <StatusCard title="Rejected" count={statusCounts.REJECTED} variant="destructive" icon={XCircle} />
-        <StatusCard title="Expired" count={statusCounts.EXPIRED} icon={AlertCircle} />
+        <StatusCard
+          title="Cycles Approved"
+          count={paymentCycleCounts.APPROVED}
+          variant="success"
+          icon={CheckCircle2}
+        />
+        <StatusCard
+          title="Cycles Paid"
+          count={paymentCycleCounts.PAID}
+          variant="success"
+          icon={FileCheck}
+        />
+        <StatusCard
+          title="Cycles Declined"
+          count={paymentCycleCounts.DECLINED}
+          variant="destructive"
+          icon={XCircle}
+        />
       </div>
 
       <Card>
@@ -156,7 +189,7 @@ export default async function POCSubscriptionsPage({ searchParams }: Subscriptio
             <div>
               <CardTitle>All Subscriptions</CardTitle>
               <CardDescription>
-                {totalCount} subscription{totalCount !== 1 ? 's' : ''} found
+                {totalCount} subscription{totalCount !== 1 ? 's' : ''} found — Click on a subscription to view payment cycles and approve/decline
               </CardDescription>
             </div>
           </div>
@@ -172,6 +205,7 @@ export default async function POCSubscriptionsPage({ searchParams }: Subscriptio
             pageSize={limit}
             currentPage={currentPage}
             baseRoute={POC_ROUTES.SUBSCRIPTIONS}
+            readOnly={true}
           />
         </CardContent>
       </Card>

@@ -310,64 +310,6 @@ describe('Department Actions', () => {
     })
   })
 
-  describe('assignPOCToHOD', () => {
-    it('should assign POC to HOD successfully', async () => {
-      const pocId = '423e4567-e89b-12d3-a456-426614174040'
-      const hodId = '523e4567-e89b-12d3-a456-426614174040'
-      
-      // Mock POC role check
-      mockSupabase.maybeSingle.mockResolvedValueOnce({
-        data: { role_id: '00000000-0000-0000-0000-000000000004' },
-        error: null,
-      })
-      // Mock existing POC check (none exists)
-      mockSupabase.maybeSingle.mockResolvedValueOnce({ data: null, error: null })
-      mockSupabase.single.mockResolvedValueOnce({
-        data: { poc_id: pocId, hod_id: hodId },
-        error: null,
-      })
-
-      const result = await departmentActions.assignPOCToHOD(pocId, hodId)
-
-      expect(result.success).toBe(true)
-      expect(mockSupabase.from).toHaveBeenCalledWith('hod_poc_mapping')
-    })
-
-    it('should reject POC already assigned to another HOD', async () => {
-      const pocId = '423e4567-e89b-12d3-a456-426614174041'
-      const hodId = '523e4567-e89b-12d3-a456-426614174041'
-      const otherHodId = '523e4567-e89b-12d3-a456-426614174042'
-      
-      // Mock POC role check
-      mockSupabase.maybeSingle.mockResolvedValueOnce({
-        data: { role_id: '00000000-0000-0000-0000-000000000004' },
-        error: null,
-      })
-      // Mock existing POC assignment
-      mockSupabase.maybeSingle.mockResolvedValueOnce({
-        data: { poc_id: pocId, hod_id: otherHodId },
-        error: null,
-      })
-
-      const result = await departmentActions.assignPOCToHOD(pocId, hodId)
-
-      expect(result.success).toBe(false)
-      expect(result.error).toBe('HOD already has a POC assigned. Remove existing POC first.')
-    })
-  })
-
-  describe('removePOCFromHOD', () => {
-    it('should remove POC from HOD successfully', async () => {
-      const hodId = '523e4567-e89b-12d3-a456-426614174050'
-      mockSupabase.eq.mockResolvedValueOnce({ error: null })
-
-      const result = await departmentActions.removePOCFromHOD(hodId)
-
-      expect(result.success).toBe(true)
-      expect(mockSupabase.delete).toHaveBeenCalled()
-    })
-  })
-
   describe('grantPOCAccessToDepartment', () => {
     it('should grant POC access to department', async () => {
       const pocId = '423e4567-e89b-12d3-a456-426614174060'
@@ -430,12 +372,6 @@ describe('Department Actions', () => {
     it('should validate user IDs for HOD assignment', async () => {
       const deptId = '323e4567-e89b-12d3-a456-426614174080'
       const result = await departmentActions.assignHODToDepartment('', deptId)
-      expect(result.success).toBe(false)
-    })
-
-    it('should validate POC assignment parameters', async () => {
-      const hodId = '523e4567-e89b-12d3-a456-426614174090'
-      const result = await departmentActions.assignPOCToHOD('', hodId)
       expect(result.success).toBe(false)
     })
   })

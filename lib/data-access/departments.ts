@@ -185,23 +185,8 @@ export async function* fetchDepartmentsForExport(batchSize: number = 1000) {
   }
 }
 
-/**
- * Fetch department analytics using the database view
- */
-export async function fetchDepartmentAnalytics() {
-  const supabase = await createClient()
-
-  const { data, error } = await supabase
-    .from('department_analytics')
-    .select('id, name, is_active, active_user_count, hod_count, poc_count, created_at, updated_at')
-    .eq('is_active', true)
-
-  if (error) {
-    throw new Error(`Failed to fetch department analytics: ${error.message}`)
-  }
-
-  return data || []
-}
+// NOTE: fetchDepartmentAnalytics removed - department_analytics view was dropped
+// as part of workflow simplification
 
 /**
  * Fetch POCs for a specific department

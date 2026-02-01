@@ -14,50 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      audit_log: {
-        Row: {
-          action: string
-          changes: Json | null
-          created_at: string
-          entity_id: string | null
-          entity_type: string
-          id: string
-          ip_address: string | null
-          user_agent: string | null
-          user_id: string | null
-        }
-        Insert: {
-          action: string
-          changes?: Json | null
-          created_at?: string
-          entity_id?: string | null
-          entity_type: string
-          id?: string
-          ip_address?: string | null
-          user_agent?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          action?: string
-          changes?: Json | null
-          created_at?: string
-          entity_id?: string | null
-          entity_type?: string
-          id?: string
-          ip_address?: string | null
-          user_agent?: string | null
-          user_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "audit_log_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       departments: {
         Row: {
           created_at: string
@@ -106,13 +62,6 @@ export type Database = {
             foreignKeyName: "hod_departments_department_id_fkey"
             columns: ["department_id"]
             isOneToOne: false
-            referencedRelation: "department_analytics"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "hod_departments_department_id_fkey"
-            columns: ["department_id"]
-            isOneToOne: false
             referencedRelation: "departments"
             referencedColumns: ["id"]
           },
@@ -120,39 +69,6 @@ export type Database = {
             foreignKeyName: "hod_departments_hod_id_fkey"
             columns: ["hod_id"]
             isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      hod_poc_mapping: {
-        Row: {
-          created_at: string
-          hod_id: string
-          poc_id: string
-        }
-        Insert: {
-          created_at?: string
-          hod_id: string
-          poc_id: string
-        }
-        Update: {
-          created_at?: string
-          hod_id?: string
-          poc_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "hod_poc_mapping_hod_id_fkey"
-            columns: ["hod_id"]
-            isOneToOne: true
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "hod_poc_mapping_poc_id_fkey"
-            columns: ["poc_id"]
-            isOneToOne: true
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -179,13 +95,6 @@ export type Database = {
             foreignKeyName: "poc_department_access_department_id_fkey"
             columns: ["department_id"]
             isOneToOne: false
-            referencedRelation: "department_analytics"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "poc_department_access_department_id_fkey"
-            columns: ["department_id"]
-            isOneToOne: false
             referencedRelation: "departments"
             referencedColumns: ["id"]
           },
@@ -197,30 +106,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      products: {
-        Row: {
-          created_at: string | null
-          id: string
-          is_active: boolean | null
-          name: string
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          is_active?: boolean | null
-          name: string
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          is_active?: boolean | null
-          name?: string
-          updated_at?: string | null
-        }
-        Relationships: []
       }
       roles: {
         Row: {
@@ -363,6 +248,7 @@ export type Database = {
           poc_approved_at: string | null
           poc_approved_by: string | null
           poc_rejection_reason: string | null
+          remarks: string | null
           subscription_id: string
           updated_at: string
         }
@@ -386,6 +272,7 @@ export type Database = {
           poc_approved_at?: string | null
           poc_approved_by?: string | null
           poc_rejection_reason?: string | null
+          remarks?: string | null
           subscription_id: string
           updated_at?: string
         }
@@ -409,6 +296,7 @@ export type Database = {
           poc_approved_at?: string | null
           poc_approved_by?: string | null
           poc_rejection_reason?: string | null
+          remarks?: string | null
           subscription_id?: string
           updated_at?: string
         }
@@ -473,13 +361,6 @@ export type Database = {
             foreignKeyName: "subscription_sequences_department_id_fkey"
             columns: ["department_id"]
             isOneToOne: false
-            referencedRelation: "department_analytics"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "subscription_sequences_department_id_fkey"
-            columns: ["department_id"]
-            isOneToOne: false
             referencedRelation: "departments"
             referencedColumns: ["id"]
           },
@@ -487,23 +368,20 @@ export type Database = {
       }
       subscriptions: {
         Row: {
-          accounting_status: string
           amount: number
           billing_frequency: Database["public"]["Enums"]["billing_frequency"]
-          budget_period: string | null
           created_at: string
           created_by: string
           currency: string
           department_id: string
-          end_date: string | null
+          end_date: string
           equivalent_inr_amount: number | null
           id: string
           login_url: string | null
           mandate_id: string | null
           payment_status: Database["public"]["Enums"]["payment_status"]
-          payment_utr: string | null
           poc_email: string | null
-          product_id: string | null
+          pr_id: string | null
           request_type: string
           requester_remarks: string | null
           start_date: string | null
@@ -516,23 +394,20 @@ export type Database = {
           version: number
         }
         Insert: {
-          accounting_status?: string
           amount: number
           billing_frequency?: Database["public"]["Enums"]["billing_frequency"]
-          budget_period?: string | null
           created_at?: string
           created_by: string
           currency?: string
           department_id: string
-          end_date?: string | null
+          end_date: string
           equivalent_inr_amount?: number | null
           id?: string
           login_url?: string | null
           mandate_id?: string | null
           payment_status?: Database["public"]["Enums"]["payment_status"]
-          payment_utr?: string | null
           poc_email?: string | null
-          product_id?: string | null
+          pr_id?: string | null
           request_type?: string
           requester_remarks?: string | null
           start_date?: string | null
@@ -545,23 +420,20 @@ export type Database = {
           version?: number
         }
         Update: {
-          accounting_status?: string
           amount?: number
           billing_frequency?: Database["public"]["Enums"]["billing_frequency"]
-          budget_period?: string | null
           created_at?: string
           created_by?: string
           currency?: string
           department_id?: string
-          end_date?: string | null
+          end_date?: string
           equivalent_inr_amount?: number | null
           id?: string
           login_url?: string | null
           mandate_id?: string | null
           payment_status?: Database["public"]["Enums"]["payment_status"]
-          payment_utr?: string | null
           poc_email?: string | null
-          product_id?: string | null
+          pr_id?: string | null
           request_type?: string
           requester_remarks?: string | null
           start_date?: string | null
@@ -585,21 +457,7 @@ export type Database = {
             foreignKeyName: "subscriptions_department_id_fkey"
             columns: ["department_id"]
             isOneToOne: false
-            referencedRelation: "department_analytics"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "subscriptions_department_id_fkey"
-            columns: ["department_id"]
-            isOneToOne: false
             referencedRelation: "departments"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "subscriptions_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "products"
             referencedColumns: ["id"]
           },
         ]
@@ -667,62 +525,14 @@ export type Database = {
         }
         Relationships: []
       }
-      vendors: {
-        Row: {
-          created_at: string | null
-          id: string
-          is_active: boolean | null
-          name: string
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          is_active?: boolean | null
-          name: string
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          is_active?: boolean | null
-          name?: string
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
     }
     Views: {
-      department_analytics: {
-        Row: {
-          active_user_count: number | null
-          created_at: string | null
-          hod_count: number | null
-          id: string | null
-          is_active: boolean | null
-          name: string | null
-          poc_count: number | null
-          updated_at: string | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
       can_access_subscription_file: {
         Args: { subscription_id: string }
         Returns: boolean
-      }
-      create_audit_log: {
-        Args: {
-          p_action: string
-          p_changes?: Json
-          p_entity_id?: string
-          p_entity_type: string
-          p_ip_address?: string
-          p_user_agent?: string
-          p_user_id: string
-        }
-        Returns: string
       }
       generate_short_code: { Args: { dept_name: string }; Returns: string }
       generate_subscription_code: {
@@ -740,22 +550,6 @@ export type Database = {
           total_users: number
         }[]
       }
-      get_role_distribution: {
-        Args: never
-        Returns: {
-          role_name: string
-          user_count: number
-        }[]
-      }
-      get_user_activity_stats: {
-        Args: never
-        Returns: {
-          active_percentage: number
-          active_users: number
-          inactive_users: number
-          total_users: number
-        }[]
-      }
       get_user_role_name: { Args: { user_uuid: string }; Returns: string }
       has_any_role: { Args: { role_names: string[] }; Returns: boolean }
       has_poc_access_to_department: {
@@ -768,15 +562,7 @@ export type Database = {
     Enums: {
       approval_action: "APPROVED" | "REJECTED"
       billing_frequency: "MONTHLY" | "QUARTERLY" | "YEARLY" | "USAGE_BASED"
-      payment_cycle_status:
-        | "PENDING_PAYMENT"
-        | "PAYMENT_RECORDED"
-        | "PENDING_APPROVAL"
-        | "APPROVED"
-        | "REJECTED"
-        | "INVOICE_UPLOADED"
-        | "COMPLETED"
-        | "CANCELLED"
+      payment_cycle_status: "PENDING" | "APPROVED" | "DECLINED" | "PAID"
       payment_status: "PAID" | "IN_PROGRESS" | "DECLINED"
       subscription_status:
         | "PENDING"
@@ -913,16 +699,7 @@ export const Constants = {
     Enums: {
       approval_action: ["APPROVED", "REJECTED"],
       billing_frequency: ["MONTHLY", "QUARTERLY", "YEARLY", "USAGE_BASED"],
-      payment_cycle_status: [
-        "PENDING_PAYMENT",
-        "PAYMENT_RECORDED",
-        "PENDING_APPROVAL",
-        "APPROVED",
-        "REJECTED",
-        "INVOICE_UPLOADED",
-        "COMPLETED",
-        "CANCELLED",
-      ],
+      payment_cycle_status: ["PENDING", "APPROVED", "DECLINED", "PAID"],
       payment_status: ["PAID", "IN_PROGRESS", "DECLINED"],
       subscription_status: [
         "PENDING",

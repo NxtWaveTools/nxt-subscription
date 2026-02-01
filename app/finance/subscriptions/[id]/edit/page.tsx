@@ -7,10 +7,11 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft, Pencil } from 'lucide-react'
-import { fetchSubscriptionById, fetchActiveDepartments } from '@/lib/data-access'
+import { ArrowLeft, Pencil, CreditCard } from 'lucide-react'
+import { fetchSubscriptionById, fetchActiveDepartments, fetchSubscriptionPayments } from '@/lib/data-access'
 import { FINANCE_ROUTES } from '@/lib/constants'
 import { EditSubscriptionForm } from './components/edit-subscription-form'
+import { EditPaymentCyclesTable } from './components/edit-payment-cycles-table'
 
 interface EditSubscriptionPageProps {
   params: Promise<{ id: string }>
@@ -19,10 +20,11 @@ interface EditSubscriptionPageProps {
 export default async function EditSubscriptionPage({ params }: EditSubscriptionPageProps) {
   const { id } = await params
 
-  // Fetch subscription and dropdown data
-  const [subscription, departments] = await Promise.all([
+  // Fetch subscription, departments, and payment cycles
+  const [subscription, departments, paymentCycles] = await Promise.all([
     fetchSubscriptionById(id),
     fetchActiveDepartments(),
+    fetchSubscriptionPayments(id),
   ])
 
   if (!subscription) {
@@ -67,6 +69,27 @@ export default async function EditSubscriptionPage({ params }: EditSubscriptionP
           />
         </CardContent>
       </Card>
+
+      {/* Payment Cycles */}
+      {paymentCycles && paymentCycles.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CreditCard className="h-5 w-5" />
+              Payment Cycles
+            </CardTitle>
+            <CardDescription>
+              Edit payment cycle details including payment status, UTR, and invoice information.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <EditPaymentCyclesTable 
+              paymentCycles={paymentCycles} 
+              subscription={subscription}
+            />
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }

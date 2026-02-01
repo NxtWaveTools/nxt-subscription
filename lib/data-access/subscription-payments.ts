@@ -12,7 +12,6 @@ import type {
   PaymentCycleStatus,
   PocApprovalStatus,
 } from '@/lib/types'
-import { RENEWAL_REMINDER_DAYS } from '@/lib/constants'
 
 // ============================================================================
 // Types
@@ -124,17 +123,12 @@ export async function fetchLatestPaymentCycle(
 }
 
 /**
- * Fetch pending approvals for POC (subscriptions needing approval within RENEWAL_REMINDER_DAYS)
+ * Fetch pending approvals for POC (cycles with PENDING status)
  */
 export async function fetchPendingApprovalsForPOC(
   departmentIds: string[]
 ): Promise<SubscriptionPaymentWithRelations[]> {
   const supabase = await createClient()
-
-  // Calculate the date range for pending approvals
-  const today = new Date()
-  const reminderDate = new Date()
-  reminderDate.setDate(today.getDate() + RENEWAL_REMINDER_DAYS)
 
   const { data, error } = await supabase
     .from('subscription_payments')
@@ -154,8 +148,7 @@ export async function fetchPendingApprovalsForPOC(
         billing_frequency
       )
     `)
-    .eq('poc_approval_status', 'PENDING')
-    .lte('cycle_end_date', reminderDate.toISOString().split('T')[0])
+    .eq('cycle_status', 'PENDING')
     .in('subscriptions.department_id', departmentIds)
     .order('cycle_end_date', { ascending: true })
 
@@ -168,7 +161,8 @@ export async function fetchPendingApprovalsForPOC(
 }
 
 /**
- * Fetch payments pending invoice upload for POC
+ * Fetch payments that need invoice upload from POC
+ * POC can upload invoice once cycle is APPROVED
  */
 export async function fetchPendingInvoiceUploadsForPOC(
   departmentIds: string[]
@@ -193,7 +187,7 @@ export async function fetchPendingInvoiceUploadsForPOC(
         billing_frequency
       )
     `)
-    .eq('cycle_status', 'PAYMENT_RECORDED')
+    .eq('cycle_status', 'APPROVED')
     .is('invoice_file_id', null)
     .in('subscriptions.department_id', departmentIds)
     .order('invoice_deadline', { ascending: true })
@@ -231,7 +225,7 @@ export async function fetchOverdueInvoices(
         poc_email
       )
     `)
-    .eq('cycle_status', 'PAYMENT_RECORDED')
+    .eq('cycle_status', 'APPROVED')
     .is('invoice_file_id', null)
     .lt('invoice_deadline', today)
     .in('subscriptions.department_id', departmentIds)
@@ -391,7 +385,7 @@ export async function uploadInvoice(
 }
 
 /**
- * Cancel payment cycle (due to missing invoice)
+ * Cancel payment cycle (mark as declined)
  */
 export async function cancelPaymentCycle(
   paymentId: string
@@ -401,7 +395,7 @@ export async function cancelPaymentCycle(
   const { data, error } = await supabase
     .from('subscription_payments')
     .update({
-      cycle_status: 'CANCELLED',
+      cycle_status: 'DECLINED',
     })
     .eq('id', paymentId)
     .select()
@@ -488,20 +482,6 @@ export function calculateNextCycleDates(
 }
 
 /**
- * Check if renewal reminder should be sent
- */
-export function shouldSendRenewalReminder(cycleEndDate: Date): boolean {
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-
-  const reminderDate = new Date(cycleEndDate)
-  reminderDate.setDate(reminderDate.getDate() - RENEWAL_REMINDER_DAYS)
-  reminderDate.setHours(0, 0, 0, 0)
-
-  return today >= reminderDate
-}
-
-/**
  * Check if invoice is overdue
  */
 export function isInvoiceOverdue(invoiceDeadline: Date): boolean {
@@ -519,14 +499,10 @@ export function isInvoiceOverdue(invoiceDeadline: Date): boolean {
 // ============================================================================
 
 export interface PaymentCycleCounts {
-  PENDING_PAYMENT: number
-  PAYMENT_RECORDED: number
-  PENDING_APPROVAL: number
+  PENDING: number
   APPROVED: number
-  REJECTED: number
-  INVOICE_UPLOADED: number
-  COMPLETED: number
-  CANCELLED: number
+  DECLINED: number
+  PAID: number
 }
 
 /**
@@ -544,16 +520,12 @@ export async function getPaymentCycleCountsByStatus(): Promise<PaymentCycleCount
     throw new Error(`Failed to fetch payment cycle counts: ${error.message}`)
   }
 
-  // Initialize counts
+  // Initialize counts with simplified statuses
   const counts: PaymentCycleCounts = {
-    PENDING_PAYMENT: 0,
-    PAYMENT_RECORDED: 0,
-    PENDING_APPROVAL: 0,
+    PENDING: 0,
     APPROVED: 0,
-    REJECTED: 0,
-    INVOICE_UPLOADED: 0,
-    COMPLETED: 0,
-    CANCELLED: 0,
+    DECLINED: 0,
+    PAID: 0,
   }
 
   // Count by status
@@ -568,7 +540,7 @@ export async function getPaymentCycleCountsByStatus(): Promise<PaymentCycleCount
 }
 
 /**
- * Get count of payment cycles requiring Finance action (pending payment)
+ * Get count of payment cycles requiring Finance action (approved, waiting for payment)
  */
 export async function getPaymentsPendingFinanceAction(): Promise<number> {
   const supabase = await createClient()
@@ -576,7 +548,7 @@ export async function getPaymentsPendingFinanceAction(): Promise<number> {
   const { count, error } = await supabase
     .from('subscription_payments')
     .select('*', { count: 'exact', head: true })
-    .eq('cycle_status', 'PENDING_PAYMENT')
+    .eq('cycle_status', 'APPROVED')
 
   if (error) {
     console.error('Error fetching pending payments count:', error)
@@ -667,14 +639,10 @@ export async function getPaymentCycleCountsForDepartments(
 
   if (departmentIds.length === 0) {
     return {
-      PENDING_PAYMENT: 0,
-      PAYMENT_RECORDED: 0,
-      PENDING_APPROVAL: 0,
+      PENDING: 0,
       APPROVED: 0,
-      REJECTED: 0,
-      INVOICE_UPLOADED: 0,
-      COMPLETED: 0,
-      CANCELLED: 0,
+      DECLINED: 0,
+      PAID: 0,
     }
   }
 
@@ -691,16 +659,12 @@ export async function getPaymentCycleCountsForDepartments(
     throw new Error(`Failed to fetch payment cycle counts: ${error.message}`)
   }
 
-  // Initialize counts
+  // Initialize counts with simplified statuses
   const counts: PaymentCycleCounts = {
-    PENDING_PAYMENT: 0,
-    PAYMENT_RECORDED: 0,
-    PENDING_APPROVAL: 0,
+    PENDING: 0,
     APPROVED: 0,
-    REJECTED: 0,
-    INVOICE_UPLOADED: 0,
-    COMPLETED: 0,
-    CANCELLED: 0,
+    DECLINED: 0,
+    PAID: 0,
   }
 
   // Count by status

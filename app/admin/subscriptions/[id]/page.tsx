@@ -11,13 +11,13 @@ import { Button } from '@/components/ui/button'
 import {
   ArrowLeft,
   Pencil,
-  Upload,
 } from 'lucide-react'
 import {
   fetchSubscriptionById,
   fetchSubscriptionPayments,
 } from '@/lib/data-access'
 import { ADMIN_ROUTES } from '@/lib/constants'
+import { PaymentCycleSection } from './components/payment-cycle-section'
 
 interface SubscriptionDetailPageProps {
   params: Promise<{ id: string }>
@@ -193,76 +193,14 @@ export default async function SubscriptionDetailPage({ params }: SubscriptionDet
         </CardContent>
       </Card>
 
-      {/* Payment Cycles */}
-      {paymentCycles && paymentCycles.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Payment Cycles</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left py-3 px-4 font-medium text-sm text-muted-foreground">Cycle</th>
-                    <th className="text-left py-3 px-4 font-medium text-sm text-muted-foreground">Period</th>
-                    <th className="text-left py-3 px-4 font-medium text-sm text-muted-foreground">Payment Status</th>
-                    <th className="text-left py-3 px-4 font-medium text-sm text-muted-foreground">POC Approval</th>
-                    <th className="text-left py-3 px-4 font-medium text-sm text-muted-foreground">Amount</th>
-                    <th className="text-left py-3 px-4 font-medium text-sm text-muted-foreground">Invoice</th>
-                    <th className="text-left py-3 px-4 font-medium text-sm text-muted-foreground">UTR</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {paymentCycles.map((cycle) => (
-                    <tr key={cycle.id} className="border-b hover:bg-muted/50">
-                      <td className="py-4 px-4">
-                        <span className="font-medium">#{cycle.cycle_number}</span>
-                      </td>
-                      <td className="py-4 px-4 text-sm text-muted-foreground">
-                        {formatDate(cycle.cycle_start_date)} - {formatDate(cycle.cycle_end_date)}
-                      </td>
-                      <td className="py-4 px-4">
-                        <Badge variant="outline">
-                          {paymentStatusLabels[cycle.payment_status] || cycle.payment_status}
-                        </Badge>
-                      </td>
-                      <td className="py-4 px-4">
-                        <Badge variant="outline">
-                          {cycle.poc_approval_status}
-                        </Badge>
-                      </td>
-                      <td className="py-4 px-4 font-medium">
-                        {formatCurrency(subscription.amount, subscription.currency)}
-                      </td>
-                      <td className="py-4 px-4">
-                        {cycle.invoice_file_id ? (
-                          <div className="flex gap-2">
-                            <Button variant="outline" size="sm">View</Button>
-                            <Button variant="outline" size="sm">Replace</Button>
-                          </div>
-                        ) : (
-                          <Button variant="outline" size="sm">
-                            <Upload className="h-4 w-4 mr-1" />
-                            Upload
-                          </Button>
-                        )}
-                      </td>
-                      <td className="py-4 px-4">
-                        {cycle.payment_utr ? (
-                          <span className="font-mono text-xs">{cycle.payment_utr}</span>
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {/* Payment Cycles - Interactive component for Admin */}
+      <PaymentCycleSection
+        subscriptionId={subscription.id}
+        subscriptionStatus={subscription.status}
+        billingFrequency={subscription.billing_frequency}
+        cycleEndDate={subscription.end_date}
+        initialPaymentCycles={paymentCycles}
+      />
     </div>
   )
 }

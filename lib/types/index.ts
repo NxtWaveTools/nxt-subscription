@@ -10,7 +10,6 @@ export type Role = Database['public']['Tables']['roles']['Row']
 export type Department = Database['public']['Tables']['departments']['Row']
 export type UserRole = Database['public']['Tables']['user_roles']['Row']
 export type HodDepartment = Database['public']['Tables']['hod_departments']['Row']
-export type HodPocMapping = Database['public']['Tables']['hod_poc_mapping']['Row']
 export type PocDepartmentAccess = Database['public']['Tables']['poc_department_access']['Row']
 
 // Insert types
@@ -118,46 +117,6 @@ export interface RoleCounts {
 // Vendor Types
 // ============================================================================
 
-export interface Vendor {
-  id: string
-  name: string
-  is_active: boolean | null
-  created_at: string | null
-  updated_at: string | null
-}
-
-export interface VendorInsert {
-  name: string
-  is_active?: boolean | null
-}
-
-export interface VendorUpdate {
-  name?: string
-  is_active?: boolean | null
-}
-
-// ============================================================================
-// Product Types
-// ============================================================================
-
-export interface Product {
-  id: string
-  name: string
-  is_active: boolean | null
-  created_at: string | null
-  updated_at: string | null
-}
-
-export interface ProductInsert {
-  name: string
-  is_active?: boolean | null
-}
-
-export interface ProductUpdate {
-  name?: string
-  is_active?: boolean | null
-}
-
 // ============================================================================
 // Subscription Types
 // ============================================================================
@@ -168,7 +127,6 @@ export interface Subscription {
   request_type: 'INVOICE' | 'QUOTATION'
   tool_name: string
   vendor_name: string
-  product_id: string | null // Foreign key to products table (optional)
   department_id: string
   amount: number
   equivalent_inr_amount: number | null // Equivalent amount in INR
@@ -176,7 +134,6 @@ export interface Subscription {
   billing_frequency: 'MONTHLY' | 'QUARTERLY' | 'YEARLY' | 'USAGE_BASED'
   payment_status: 'PAID' | 'IN_PROGRESS' | 'DECLINED' // Updated payment status
   status: 'PENDING' | 'ACTIVE' | 'REJECTED' | 'EXPIRED' | 'CANCELLED'
-  accounting_status: 'PENDING' | 'DONE'
   start_date: string | null
   end_date: string // Mandatory end date
   login_url: string | null // Tool Link/URL
@@ -184,8 +141,6 @@ export interface Subscription {
   poc_email: string | null // POC email for subscription (auto-filled from department)
   mandate_id: string | null // Mandate ID
   pr_id: string | null // Purchase Request ID
-  budget_period: string | null // Budget period
-  payment_utr: string | null // Payment UTR
   requester_remarks: string | null // Requester remarks
   version: number
   created_by: string
@@ -197,7 +152,6 @@ export interface SubscriptionInsert {
   request_type: 'INVOICE' | 'QUOTATION'
   tool_name: string
   vendor_name: string
-  product_id?: string | null // Foreign key to products table (optional - not shown in UI)
   department_id: string
   amount: number
   equivalent_inr_amount?: number | null // Equivalent amount in INR (auto-calculated)
@@ -210,17 +164,14 @@ export interface SubscriptionInsert {
   poc_email?: string | null // POC email for subscription (auto-filled from department)
   mandate_id?: string | null // Mandate ID
   pr_id?: string | null // Purchase Request ID
-  budget_period?: string | null // Budget period
   requester_remarks?: string | null // Requester remarks
-  // Note: payment_utr, payment_status, accounting_status are NOT in creation form
-  // They are managed in payment cycles
+  // Note: payment tracking details are managed in subscription_payments (payment cycles)
 }
 
 export interface SubscriptionUpdate {
   request_type?: 'INVOICE' | 'QUOTATION'
   tool_name?: string
   vendor_name?: string
-  product_id?: string | null // Foreign key to products table (optional)
   department_id?: string
   amount?: number
   equivalent_inr_amount?: number | null // Equivalent amount in INR (auto-calculated)
@@ -233,10 +184,8 @@ export interface SubscriptionUpdate {
   poc_email?: string | null // POC email for subscription (auto-filled from department)
   mandate_id?: string | null // Mandate ID
   pr_id?: string | null // Purchase Request ID
-  budget_period?: string | null // Budget period
   requester_remarks?: string | null // Requester remarks
   payment_status?: 'PAID' | 'IN_PROGRESS' | 'DECLINED' // Updated payment status
-  accounting_status?: 'PENDING' | 'DONE'
 }
 
 /**
@@ -306,15 +255,14 @@ export interface SubscriptionApprovalWithApprover extends SubscriptionApproval {
 // Subscription Payment Types (Payment Cycles)
 // ============================================================================
 
-export type PaymentCycleStatus =
-  | 'PENDING_PAYMENT'     // Waiting for Finance to record payment
-  | 'PAYMENT_RECORDED'    // Finance has recorded payment, waiting for POC invoice
-  | 'PENDING_APPROVAL'    // Awaiting POC approval for next renewal
-  | 'APPROVED'            // POC approved renewal
-  | 'REJECTED'            // POC rejected renewal
-  | 'INVOICE_UPLOADED'    // POC uploaded invoice
-  | 'COMPLETED'           // Cycle complete
-  | 'CANCELLED'           // Cancelled due to missing invoice
+/**
+ * Simplified payment cycle status:
+ * - PENDING: Renewal cycle created, waiting for POC approval
+ * - APPROVED: POC approved the renewal (waiting for payment)
+ * - DECLINED: POC declined the renewal
+ * - PAID: Finance recorded payment (cycle complete)
+ */
+export type PaymentCycleStatus = 'PENDING' | 'APPROVED' | 'DECLINED' | 'PAID'
 
 export type PocApprovalStatus = 'PENDING' | 'APPROVED' | 'REJECTED'
 
@@ -335,7 +283,6 @@ export interface SubscriptionPayment {
   payment_status: 'PAID' | 'IN_PROGRESS' | 'DECLINED'
   accounting_status: 'PENDING' | 'DONE'
   mandate_id: string | null
-  remarks: string | null // Cycle-specific remarks/notes
   payment_recorded_by: string | null
   payment_recorded_at: string | null
 
@@ -370,7 +317,6 @@ export interface SubscriptionPaymentInsert {
   payment_status?: 'PAID' | 'IN_PROGRESS' | 'DECLINED'
   accounting_status?: 'PENDING' | 'DONE'
   mandate_id?: string | null
-  remarks?: string | null // Cycle-specific remarks/notes
   payment_recorded_by?: string | null
   payment_recorded_at?: string | null
   poc_approval_status?: PocApprovalStatus

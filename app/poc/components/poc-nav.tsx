@@ -39,7 +39,7 @@ export function POCNav({ user }: POCNavProps) {
     <div className="w-64 border-r bg-muted/40">
       <div className="flex h-full flex-col gap-2">
         {/* Header */}
-        <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
+        <div className="flex h-14 items-center justify-between border-b px-4 lg:h-[60px] lg:px-6">
           <Link href={POC_ROUTES.SUBSCRIPTIONS} className="flex items-center gap-2 font-semibold">
             <ClipboardCheck className="h-6 w-6" />
             <span>POC Portal</span>

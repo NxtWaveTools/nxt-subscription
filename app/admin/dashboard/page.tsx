@@ -3,7 +3,7 @@
 // ============================================================================
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Users, Building2, UserCheck, BarChart3 } from 'lucide-react'
+import { Users, Building2, UserCheck, CreditCard } from 'lucide-react'
 import Link from 'next/link'
 import { ADMIN_ROUTES } from '@/lib/constants'
 import { createClient } from '@/lib/supabase/server'
@@ -99,11 +99,11 @@ export default async function AdminPage() {
             <span className="font-medium">Manage Departments</span>
           </Link>
           <Link
-            href={ADMIN_ROUTES.ANALYTICS}
+            href={ADMIN_ROUTES.SUBSCRIPTIONS}
             className="flex items-center gap-2 rounded-lg border p-3 transition-colors hover:bg-accent"
           >
-            <BarChart3 className="h-4 w-4" />
-            <span className="font-medium">View Analytics</span>
+            <CreditCard className="h-4 w-4" />
+            <span className="font-medium">Manage Subscriptions</span>
           </Link>
         </CardContent>
       </Card>

@@ -9,7 +9,6 @@ import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { requireAdmin } from '@/lib/auth/user'
 import { adminSchemas } from '@/lib/validation/schemas'
 import { ADMIN_ROUTES, BULK_BATCH_SIZE, ROLE_IDS } from '@/lib/constants'
-import { createAuditLog, AUDIT_ACTIONS, AUDIT_ENTITY_TYPES } from '@/lib/utils/audit-log'
 
 type ActionResponse<T = unknown> = {
   success: boolean
@@ -99,15 +98,6 @@ export async function createUser(data: {
 
     revalidatePath(ADMIN_ROUTES.USERS)
     
-    // Audit log - fire and forget (don't block response)
-    createAuditLog({
-      userId: (await requireAdmin()).id,
-      action: AUDIT_ACTIONS.USER_CREATE,
-      entityType: AUDIT_ENTITY_TYPES.USER,
-      entityId: authUser.user.id,
-      changes: { email: data.email, name: data.name, isActive: data.isActive, roleIds: data.roleIds },
-    }).catch(console.error)
-    
     return { success: true, data: { id: authUser.user.id } }
   } catch (error) {
     return {
@@ -153,15 +143,6 @@ export async function toggleUserActive(
     }
 
     revalidatePath(ADMIN_ROUTES.USERS)
-    
-    // Audit log
-    createAuditLog({
-      userId: currentUser.id,
-      action: validated.is_active ? AUDIT_ACTIONS.USER_ACTIVATE : AUDIT_ACTIONS.USER_DEACTIVATE,
-      entityType: AUDIT_ENTITY_TYPES.USER,
-      entityId: validated.user_id,
-      changes: { is_active: validated.is_active },
-    }).catch(console.error)
     
     return {
       success: true,
@@ -223,14 +204,6 @@ export async function bulkToggleUsersActive(
     }
 
     revalidatePath(ADMIN_ROUTES.USERS)
-    
-    // Audit log for bulk operation
-    createAuditLog({
-      userId: currentUser.id,
-      action: validated.is_active ? AUDIT_ACTIONS.BULK_USER_ACTIVATE : AUDIT_ACTIONS.BULK_USER_DEACTIVATE,
-      entityType: AUDIT_ENTITY_TYPES.USER,
-      changes: { userIds: validated.user_ids, is_active: validated.is_active, processed, failed },
-    }).catch(console.error)
     
     return {
       success: failed === 0,
@@ -313,20 +286,6 @@ export async function assignRoleToUser(
 
     revalidatePath(ADMIN_ROUTES.USERS)
     
-    // Audit log
-    createAuditLog({
-      userId: currentUser.id,
-      action: AUDIT_ACTIONS.USER_ROLE_ASSIGN,
-      entityType: AUDIT_ENTITY_TYPES.ROLE,
-      entityId: validated.user_id,
-      changes: { 
-        targetUserId: validated.user_id,
-        previousRoleId: currentRole?.role_id,
-        newRoleId: validated.role_id,
-        newRoleName: targetRole?.name,
-      },
-    }).catch(console.error)
-    
     return {
       success: true,
       warning,
@@ -370,16 +329,6 @@ export async function removeRoleFromUser(
     }
 
     revalidatePath(ADMIN_ROUTES.USERS)
-    
-    // Audit log
-    const currentUser = await requireAdmin()
-    createAuditLog({
-      userId: currentUser.id,
-      action: AUDIT_ACTIONS.USER_ROLE_REMOVE,
-      entityType: AUDIT_ENTITY_TYPES.ROLE,
-      entityId: validated.user_id,
-      changes: { targetUserId: validated.user_id, roleId: validated.role_id },
-    }).catch(console.error)
     
     return { success: true }
   } catch (error) {
@@ -497,15 +446,6 @@ export async function updateUserProfile(
 
     revalidatePath(ADMIN_ROUTES.USERS)
     
-    // Audit log
-    createAuditLog({
-      userId: currentUser.id,
-      action: AUDIT_ACTIONS.USER_UPDATE,
-      entityType: AUDIT_ENTITY_TYPES.USER,
-      entityId: userId,
-      changes: { name: data.name.trim() },
-    }).catch(console.error)
-    
     return { success: true }
   } catch (error) {
     return {
@@ -539,15 +479,6 @@ export async function deleteUser(userId: string): Promise<ActionResponse> {
     }
 
     revalidatePath(ADMIN_ROUTES.USERS)
-    
-    // Audit log
-    createAuditLog({
-      userId: currentUser.id,
-      action: AUDIT_ACTIONS.USER_DELETE,
-      entityType: AUDIT_ENTITY_TYPES.USER,
-      entityId: userId,
-      changes: { deletedUserId: userId },
-    }).catch(console.error)
     
     return { success: true }
   } catch (error) {

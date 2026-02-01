@@ -19,19 +19,13 @@ export {
   fetchDepartments,
   fetchDepartmentById,
   fetchDepartmentsForExport,
-  fetchDepartmentAnalytics,
   fetchPOCsForDepartment,
   type DepartmentFilters,
   type DepartmentPaginationOptions,
   type DepartmentListResponse,
 } from './departments'
 
-export {
-  fetchRoleDistribution,
-  fetchUserActivityStats,
-  fetchActiveDepartmentCount,
-  type UserActivityStats,
-} from './analytics'
+
 
 export {
   fetchSubscriptions,
@@ -46,26 +40,6 @@ export {
   type SubscriptionPaginationOptions,
   type SubscriptionListResponse,
 } from './subscriptions'
-
-export {
-  fetchActiveVendors,
-  fetchAllVendors,
-  fetchVendorById,
-  searchVendors,
-  createVendor,
-  updateVendor,
-  vendorNameExists,
-} from './vendors'
-
-export {
-  fetchActiveProducts,
-  fetchAllProducts,
-  fetchProductById,
-  searchProducts,
-  createProduct,
-  updateProduct,
-  productNameExists,
-} from './products'
 
 export {
   fetchSubscriptionPayments,
@@ -83,7 +57,6 @@ export {
   updatePaymentStatus,
   calculateInvoiceDeadline,
   calculateNextCycleDates,
-  shouldSendRenewalReminder,
   isInvoiceOverdue,
   type PaymentFilters,
   type PaymentPaginationOptions,
@@ -95,3 +68,5 @@ export {
   fetchPaymentCyclesForDepartments,
   getPaymentCycleCountsForDepartments,
 } from './subscription-payments'
+
+
