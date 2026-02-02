@@ -42,9 +42,14 @@ export async function createUser(data: {
 
     const adminClient = createAdminClient()
 
-    // Check if user already exists in auth
+    // Normalize email to lowercase for comparison
+    const normalizedEmail = data.email.toLowerCase().trim()
+
+    // Check if user already exists in auth (case-insensitive)
     const { data: existingAuthUser } = await adminClient.auth.admin.listUsers()
-    const userExists = existingAuthUser.users.some(u => u.email === data.email)
+    const userExists = existingAuthUser.users.some(
+      u => u.email?.toLowerCase() === normalizedEmail
+    )
 
     if (userExists) {
       return { success: false, error: 'User with this email already exists' }
@@ -52,7 +57,7 @@ export async function createUser(data: {
 
     // Create user in auth.users (will auto-sync to public.users via trigger)
     const { data: authUser, error: authError } = await adminClient.auth.admin.createUser({
-      email: data.email,
+      email: normalizedEmail,
       email_confirm: true, // Auto-confirm email
       user_metadata: {
         name: data.name,
